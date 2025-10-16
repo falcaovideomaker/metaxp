@@ -713,21 +713,29 @@ document.addEventListener('DOMContentLoaded', ()=>{
       try { localStorage.setItem('metaxp_theme', theme); } catch(e){}
       document.documentElement.setAttribute('data-theme', theme);
 
-      // Minimal: remove emojis no rótulo das abas (se houver)
-      const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
-if (theme === 'minimal' || theme === 'pink') {
-  tabs.forEach(t => {
-    const txt = (t.textContent || '');
-    t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u,'').trim();
-  });
-} else if (theme === 'medieval') {
-  // Restaura os emojis originais das abas
-  const originals = [
-    '🗡️ Missões', '🛡️ Atributos', '🏆 Conquistas',
-    '📜 Calendário', '💰 Recompensas', '⚙️ Configurações'
-  ];
+ // Minimal e Pink: remove emojis no rótulo das abas (se houver)
   const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
-  tabs.forEach((t,i)=>{ if(originals[i]) t.textContent = originals[i]; });
+
+  if (theme === 'minimal' || theme === 'pink') {
+    tabs.forEach(t => {
+      const txt = (t.textContent || '');
+      t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u, '').trim();
+    });
+  } 
+  else if (theme === 'medieval') {
+    // Restaura os emojis originais das abas
+    const originals = [
+      '🗡️ Missões', 
+      '🛡️ Atributos', 
+      '🏆 Conquistas',
+      '📜 Calendário', 
+      '💰 Recompensas', 
+      '⚙️ Configurações'
+    ];
+    tabs.forEach((t, i) => {
+      if (originals[i]) t.textContent = originals[i];
+    });
+  }
 }
           // remove prefixos não alfanuméricos (emoji, etc.)
           t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u,'').trim();
