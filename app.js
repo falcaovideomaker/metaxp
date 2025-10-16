@@ -669,3 +669,67 @@ document.addEventListener('DOMContentLoaded', ()=>{
   renderAll();
   bootTheme();
 });
+<script>
+// --- HOTFIX: inicialização resiliente dos temas --- //
+(function(){
+  function qs(sel, root=document){ return root.querySelector(sel) }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    const configTab = qs('#tab-config') || document;
+    // 1) Remove qualquer placeholder "Carregando temas..."
+    const status = qs('#themesStatus') || qs('[data-themes-status]') || Array.from(configTab.querySelectorAll('.muted, p, div')).find(el => /Carregando temas/i.test(el.textContent || ''));
+    if (status) status.remove();
+
+    // 2) Localiza os botões existentes OU injeta se não houver
+    let btnMed = qs('#themeMedieval') || qs('#themeMedievalBtn');
+    let btnPink = qs('#themePink') || qs('#themePinkBtn');
+    let btnMin  = qs('#themeMinimal') || qs('#themeMinimalBtn');
+
+    if (!btnMed || !btnPink || !btnMin) {
+      // Cria um card com os três botões
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h3 style="margin:0 0 8px 0;">Aparência</h3>
+        <div class="row">
+          <button id="themeMedieval" class="wood">RPG Medieval</button>
+          <button id="themePink" class="wood">Pink</button>
+          <button id="themeMinimal" class="wood">Minimal</button>
+        </div>
+        <p class="muted">Escolha um tema acima. Sua preferência fica salva neste dispositivo.</p>
+      `;
+      // Tenta colocar próximo de outros cards da aba config
+      const configSection = qs('#tab-config') || qs('main');
+      if (configSection) configSection.prepend(card);
+      btnMed = qs('#themeMedieval');
+      btnPink = qs('#themePink');
+      btnMin  = qs('#themeMinimal');
+    }
+
+    // 3) Função para aplicar tema (reaproveita variáveis/CSS já definidos no app)
+    function applyTheme(theme){
+      try { localStorage.setItem('metaxp_theme', theme); } catch(e){}
+      document.documentElement.setAttribute('data-theme', theme);
+
+      // Ajustes cosméticos opcionais:
+      // - Minimal: remove emojis nas abas (se o seu app usa emojis nos rótulos)
+      const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
+      if (theme === 'minimal') {
+        tabs.forEach(t => t.textContent = (t.textContent || '').replace(/^[^A-Za-zÀ-ÿ0-9]+/,'').trim());
+      } else {
+        // Se quiser restaurar emojis nas abas, faça aqui conforme seu index.html
+        // (deixei neutro pra não bagunçar caso você já os tenha fixo no HTML)
+      }
+    }
+
+    // 4) Liga os botões
+    if (btnMed)  btnMed.addEventListener('click', ()=>applyTheme('medieval'));
+    if (btnPink) btnPink.addEventListener('click', ()=>applyTheme('pink'));
+    if (btnMin)  btnMin.addEventListener('click',  ()=>applyTheme('minimal'));
+
+    // 5) Aplica o tema salvo (ou medieval como padrão)
+    const saved = (localStorage.getItem('metaxp_theme') || 'medieval');
+    applyTheme(saved);
+  });
+})();
+</script>
