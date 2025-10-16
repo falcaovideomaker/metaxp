@@ -36,6 +36,30 @@ const store = {
 let state = store.load();
 
 // ======= XP & Nível =======
+// ======= Streaks (sequências) =======
+function streakBonus(streak){
+  if(streak >= 30) return 10;  // +10 XP
+  if(streak >= 7)  return 5;   // +5 XP
+  if(streak >= 3)  return 2;   // +2 XP
+  return 0;
+}
+// Dada uma missão e uma data YYYY-MM-DD, retorna a ocorrência anterior (YYYY-MM-DD) se existir
+function prevOccurrenceDate(m, dateKey){
+  if(m.recur === "once") return null;
+  const d = ymdToDate(dateKey);
+  // retroceder até 28 dias no máximo (segurança) procurando o dia válido
+  for(let i=1;i<=28;i++){
+    const prev = addDays(d, -i);
+    const prevKey = todayKey(prev);
+    if(prevKey < m.date) break; // antes do início da missão
+    if(m.recur === "weekly"){
+      const wd = prev.getDay(); // 0..6
+      if((m.weekdays||[]).includes(wd)) return prevKey;
+    }
+  }
+  return null;
+}
+
 function nextRequirement(prev){ return Math.max(10, Math.round(prev*1.10)); } // +10% arredondado
 function grantXPCharacter(xp){
   let c = state.character;
@@ -172,12 +196,12 @@ function renderMissions(){
     }).join(" ");
     wrap.innerHTML = `
       <div class="meta">
-        <div><strong>${m.title}</strong> ${completed ? "✅" : ""}</div>
+        <div><strong>${m.title}</strong> ${completed ? "✅" : ""} <span class="chip">🔥 x${m.streak||0}</span></div>
         <div class="small muted">
           ${occ.date} ${fmtTime(m.time)} • ${m.recur==="once" ? "Única" : "Semanal"}
         </div>
         <div class="small" style="margin-top:6px;">
-          <span class="chip">Personagem: +${m.charXP||0} XP</span>
+          <span class="chip">Personagem: +${m.charXP||0} XP</span> <span class="chip">Bônus streak: +${streakBonus(m.streak||0)} XP</span>
           ${attrs}
         </div>
       </div>
@@ -236,8 +260,17 @@ function completeOccurrence(occId){
   const [mId, date] = occId.split("@");
   const m = state.missions.find(x => x.id===mId);
   if(!m) return;
-  // XP personagem
-  grantXPCharacter(m.charXP||0);
+  // Streaks
+  const prevKey = prevOccurrenceDate(m, date);
+  if(prevKey && state.completions[`${m.id}@${prevKey}`]){
+    m.streak = (m.streak||0) + 1;
+  } else {
+    m.streak = 1;
+  }
+  m.lastDone = date;
+  // XP personagem (com bônus por streak)
+  const bonus = streakBonus(m.streak||0);
+  grantXPCharacter((m.charXP||0) + bonus);
   // XP atributos
   (m.attrXP||[]).forEach(ax => grantXPAttribute(ax.attrId, ax.xp||0));
   state.completions[occId] = true;
@@ -274,6 +307,8 @@ $("#createMission").onclick = () => {
     charXP,
     attrXP: collectAttrAlloc()
   };
+  payload.streak = payload.streak || 0;
+  payload.lastDone = payload.lastDone || null;
   state.missions.push(payload);
   store.save(state);
   $("#mTitle").value = ""; $("#mXP").value = "10"; $("#mDate").value = ""; $("#mTime").value="09:00";
