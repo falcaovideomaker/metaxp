@@ -640,32 +640,34 @@ function ensureThemeStyleTag(){
   return tag;
 }
 function applyTheme(theme){
-  try { localStorage.setItem('metaxp_theme', theme) } catch(e){}
+  try { localStorage.setItem('metaxp_theme', theme); } catch(e){}
   document.documentElement.setAttribute('data-theme', theme);
-  ensureThemeStyleTag().textContent =
-    (THEME_STYLES[theme] || THEME_STYLES.medieval);
+  ensureThemeStyleTag().textContent = (THEME_STYLES[theme] || THEME_STYLES.medieval);
 
-  // rótulos das abas (remover emojis no minimal/pink; manter no medieval)
-  const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
+  // Pegue as abas UMA vez, visível a ambos os ramos abaixo
+  const tEls = Array.from(document.querySelectorAll('.tabs .tab'));
+
   if (theme === 'minimal' || theme === 'pink') {
-    tabs.forEach(t=>{
+    // Remove os emojis do começo do rótulo
+    tEls.forEach(t=>{
       const txt = (t.textContent || '');
       t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u, '').trim();
     });
-  } else if (theme === 'medieval') {
-  const originals = {
-    missoes: '🗡️ Missões',
-    atributos: '🛡️ Atributos',
-    conquistas: '🏆 Conquistas',
-    calendario: '📜 Calendário',
-    rewards: '💰 Recompensas',
-    survival: '🌿 Sobrevivência',
-    config: '⚙️ Configurações'
-  };
-  tabs.forEach((t)=>{
-    const key = t.dataset.tab;
-    if (originals[key]) t.textContent = originals[key];
-  });
+  } else { // medieval: restaura os rótulos originais (por data-tab)
+    const originalsByKey = {
+      missoes:    '🗡️ Missões',
+      atributos:  '🛡️ Atributos',
+      conquistas: '🏆 Conquistas',
+      calendario: '📜 Calendário',
+      rewards:    '💰 Recompensas',
+      survival:   '🌿 Sobrevivência',
+      config:     '⚙️ Configurações'
+    };
+    tEls.forEach(t=>{
+      const k = t.dataset.tab;
+      if (originalsByKey[k]) t.textContent = originalsByKey[k];
+    });
+  }
 }
 function ensureThemeButtons(){
   let btnMed=$("#themeMedieval"), btnPink=$("#themePink"), btnMin=$("#themeMinimal");
