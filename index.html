@@ -4,11 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#6b4f2c">
   <link rel="manifest" href="manifest.json">
-  <title>Meta XP — 2.3.2</title>
+  <title>Meta XP — 2.3.3</title>
   <style>
     :root{
       --bg:#17130e; --bg2:#1e1912; --paper:#221b12; --ink:#e8d9b8; --muted:#cbbf9b;
@@ -81,20 +79,154 @@
   </div>
 
   <main>
-    <section id="tab-missoes"></section>
-    <section id="tab-atributos" style="display:none;"></section>
+    <section id="tab-missoes">
+      <div class="filterbar">
+        <select id="range"><option value="day">Hoje</option><option value="week">Semana</option><option value="month">Mês</option></select>
+        <input type="date" id="baseDate">
+        <button id="newMission" class="addfab wood">＋ Missão</button>
+      </div>
+      <div class="card">
+        <div class="row">
+          <span class="chip">🔥 Streak ativa do dia: <b id="streakOfDay">0</b></span>
+          <span class="chip">XP hoje: <b id="xpToday">0</b></span>
+          <span class="chip">XP na semana: <b id="xpWeek">0</b></span>
+        </div>
+      </div>
+      <div id="missionList"></div>
+      <div class="empty" id="missionEmpty">Nenhuma missão. Toque em “＋ Missão”.</div>
+    </section>
+
+    <section id="tab-atributos" style="display:none;">
+      <div class="card">
+        <div class="row" style="align-items:flex-end;">
+          <input id="newAttrName" placeholder="Novo atributo (ex.: Força, Disciplina)" style="flex:2">
+          <button id="addAttr" style="flex:1" class="wood">Criar atributo</button>
+        </div>
+        <p class="muted">Cada atributo tem nível e XP próprios. Conclua missões vinculadas pra evoluí-los.</p>
+      </div>
+      <div id="attrList"></div>
+      <div class="empty" id="attrEmpty">Sem atributos ainda. Crie o primeiro acima 👆</div>
+    </section>
+
     <section id="tab-conquistas" style="display:none;">
       <div id="achList"></div>
       <div class="empty" id="achEmpty">Nenhuma conquista ainda. Continue sua jornada!</div>
     </section>
-    <section id="tab-calendario" style="display:none;"></section>
-    <section id="tab-rewards" style="display:none;"></section>
-    <section id="tab-config" style="display:none;"></section>
+
+    <section id="tab-calendario" style="display:none;">
+      <div class="card">
+        <div class="row" style="align-items:center;">
+          <button id="prevMonth" class="wood">◀</button>
+          <div style="flex:1; text-align:center; font-weight:900;" id="calMonthTitle">Mês</div>
+          <button id="nextMonth" class="wood">▶</button>
+        </div>
+        <div class="row" style="gap:6px; margin-top:8px;">
+          <span class="chip" style="flex:1; text-align:center;">Dom</span>
+          <span class="chip" style="flex:1; text-align:center;">Seg</span>
+          <span class="chip" style="flex:1; text-align:center;">Ter</span>
+          <span class="chip" style="flex:1; text-align:center;">Qua</span>
+          <span class="chip" style="flex:1; text-align:center;">Qui</span>
+          <span class="chip" style="flex:1; text-align:center;">Sex</span>
+          <span class="chip" style="flex:1; text-align:center;">Sáb</span>
+        </div>
+        <div class="calendar" id="calendarGrid"></div>
+      </div>
+    </section>
+
+    <section id="tab-rewards" style="display:none;">
+      <div class="card">
+        <div class="row" style="align-items:flex-end;">
+          <input id="rewardName" placeholder="Nome da recompensa (ex.: 🍕 Pizza com amigos)" style="flex:2">
+          <input id="rewardCost" type="number" min="1" value="50" style="width:140px" placeholder="Custo (ouro)">
+          <button id="addReward" class="wood" style="flex:1">Adicionar</button>
+        </div>
+        <p class="muted">Cadastre recompensas que podem ser “compradas” com ouro ganho por conquistas.</p>
+      </div>
+      <div id="rewardList"></div>
+      <div class="empty" id="rewardEmpty">Sem recompensas ainda. Crie a primeira acima 👆</div>
+
+      <div class="card" style="margin-top:12px;">
+        <h3 style="margin:0 0 8px 0;">Histórico</h3>
+        <div id="rewardHistory"></div>
+        <div class="muted small" id="rewardHistoryEmpty">Histórico vazio.</div>
+      </div>
+    </section>
+
+    <section id="tab-config" style="display:none;">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Dados</h3>
+        <div class="row">
+          <button id="exportBtn" class="wood">Exportar JSON</button>
+          <label class="chip" style="cursor:pointer;">Importar JSON <input id="importFile" type="file" accept="application/json" style="display:none"></label>
+        </div>
+        <p class="muted">Use exportar/importar para backup do seu progresso.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Aparência</h3>
+        <div class="row">
+          <!-- Os botões de tema são injetados pelo add-on -->
+          <button class="wood" disabled style="opacity:.7;">Carregando temas…</button>
+        </div>
+        <p class="muted">Escolha entre Medieval, Pink e Minimalista.</p>
+      </div>
+    </section>
   </main>
 
-  <footer>Meta XP 2.3.2</footer>
+  <footer>Meta XP 2.3.3 — Temas adicionados (Medieval, Pink, Minimalista)</footer>
 
+  <!-- Modais -->
+  <div class="modal" id="charModal">
+    <div class="sheet">
+      <h3 style="margin:0 0 10px 0;">Herói</h3>
+      <div class="grid2">
+        <div><label class="small muted">Nome</label><input id="charName" placeholder="Nome do personagem"></div>
+        <div><label class="small muted">XP por nível inicial</label><input id="baseNext" type="number" min="10" value="100"><p class="muted small">A cada nível, a necessidade aumenta em ~10%.</p></div>
+      </div>
+      <div class="row" style="margin-top:10px; justify-content:flex-end;"><button id="charSave" class="wood">Salvar</button></div>
+    </div>
+  </div>
+
+  <div class="modal" id="missionModal">
+    <div class="sheet">
+      <h3 style="margin:0 0 10px 0;">Nova missão</h3>
+      <div class="grid2">
+        <div><label class="small muted">Título</label><input id="mTitle" placeholder="Ex.: Treinar 30 min"></div>
+        <div><label class="small muted">Recorrência</label><select id="mRecur"><option value="once">Única</option><option value="weekly">Semanal</option></select></div>
+        <div><label class="small muted">Data</label><input type="date" id="mDate"></div>
+        <div><label class="small muted">Horário</label><input type="time" id="mTime" value="07:00"></div>
+
+        <div>
+          <label class="small muted">Repetir (semana)</label>
+          <div class="row" id="mWeekdays">
+            <label class="attrTag"><input type="checkbox" value="1"> Seg</label>
+            <label class="attrTag"><input type="checkbox" value="2"> Ter</label>
+            <label class="attrTag"><input type="checkbox" value="3"> Qua</label>
+            <label class="attrTag"><input type="checkbox" value="4"> Qui</label>
+            <label class="attrTag"><input type="checkbox" value="5"> Sex</label>
+            <label class="attrTag"><input type="checkbox" value="6"> Sáb</label>
+            <label class="attrTag"><input type="checkbox" value="0"> Dom</label>
+          </div>
+          <p class="muted small">Use os dias apenas se for semanal.</p>
+        </div>
+
+        <div><label class="small muted">Dificuldade</label>
+          <select id="mDiff">
+            <option value="easy">Fácil (x1)</option>
+            <option value="medium">Média (x1.5)</option>
+            <option value="hard">Difícil (x2)</option>
+          </select>
+        </div>
+
+        <div><label class="small muted">XP do personagem</label><input type="number" id="mXP" min="0" value="10"></div>
+        <div><label class="small muted">Atributos (XP por atributo)</label><div id="mAttrList"></div><button id="addAttrAlloc" class="chip" style="margin-top:8px;">+ Atribuição</button></div>
+      </div>
+      <div class="row" style="margin-top:10px; justify-content:flex-end;"><button id="createMission" class="wood">Criar missão</button></div>
+    </div>
+  </div>
+
+  <!-- Scripts -->
   <script src="app.js?v=2.3.2"></script>
-  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
+  <script src="app-theme-addon-2.3.3.js?v=2.3.3"></script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=2.3.3');}</script>
 </body>
 </html>
