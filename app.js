@@ -1,395 +1,56 @@
-// ======= Estado & Util =======
-const $ = (s, p=document) => p.querySelector(s);
-const $$ = (s, p=document) => Array.from(p.querySelectorAll(s));
+const $ = (s,p=document)=>p.querySelector(s); const $$=(s,p=document)=>Array.from(p.querySelectorAll(s));
+function todayKey(d=new Date()){return d.toISOString().slice(0,10)} function ymdToDate(ymd){const [y,m,d]=ymd.split('-').map(n=>+n); return new Date(y,m-1,d)}
+function addDays(d,n){const x=new Date(d); x.setDate(x.getDate()+n); return x} function weekRange(base){const d=new Date(base); const day=d.getDay(); const mon=day===0?-6:1-day; const start=addDays(d,mon); return [start,addDays(start,6)]}
+function monthRange(base){const d=new Date(base); return [new Date(d.getFullYear(),d.getMonth(),1), new Date(d.getFullYear(),d.getMonth()+1,0)]} function fmtTime(t){return t||""}
+function fmtMonthTitle(date){return date.toLocaleDateString('pt-BR',{month:'long',year:'numeric'})}
 
-function todayKey(d=new Date()){ return d.toISOString().slice(0,10); } // YYYY-MM-DD
-function ymdToDate(ymd){ const [y,m,d]=ymd.split('-').map(n=>+n); return new Date(y, m-1, d); }
-function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate()+n); return x; }
-function weekRange(base){
-  const d = new Date(base);
-  const day = d.getDay(); // 0 dom
-  const mondayOffset = day===0 ? -6 : 1-day;
-  const start = addDays(d, mondayOffset);
-  return [start, addDays(start, 6)];
-}
-function monthRange(base){
-  const d = new Date(base);
-  const start = new Date(d.getFullYear(), d.getMonth(), 1);
-  const end = new Date(d.getFullYear(), d.getMonth()+1, 0);
-  return [start, end];
-}
-function fmtTime(t){ return t || ""; }
+const store={load(){const raw=localStorage.getItem("metaxp3"); if(!raw) return {character:{name:"Aventureiro",level:1,xp:0,next:100,baseNext:100},attributes:[],missions:[],completions:{},xpLog:[]}; return JSON.parse(raw)}, save(d){localStorage.setItem("metaxp3",JSON.stringify(d))}}; let state=store.load()
+function nextRequirement(prev){return Math.max(10,Math.round(prev*1.10))}
+function grantXPCharacter(xp){let c=state.character; c.xp+=xp; while(c.xp>=c.next){c.xp-=c.next; c.level+=1; c.next=nextRequirement(c.next); toast(`🎉 Subiu para o nível ${c.level}!`) }}
+function findAttr(id){return state.attributes.find(a=>a.id===id)} function grantXPAttribute(id,xp){const a=findAttr(id); if(!a) return; a.xp+=xp; while(a.xp>=a.next){a.xp-=a.next; a.level+=1; a.next=nextRequirement(a.next)}}
+function streakBonus(s){if(s>=30)return 10; if(s>=7)return 5; if(s>=3)return 2; return 0}
+function prevOccurrenceDate(m,dateKey){if(m.recur==="once")return null; const d=ymdToDate(dateKey); for(let i=1;i<=28;i++){const prev=addDays(d,-i); const k=todayKey(prev); if(k<m.date)break; if(m.recur==="weekly"){const wd=prev.getDay(); if((m.weekdays||[]).includes(wd)) return k}} return null}
 
-const store = {
-  load(){
-    const raw = localStorage.getItem("metaxp2");
-    if(!raw) return {
-      character:{ name:"Herói", level:1, xp:0, next:100, baseNext:100 },
-      attributes:[],
-      missions:[],
-      completions:{} // key: occurrenceId (missionId@YYYY-MM-DD) => true
-    };
-    return JSON.parse(raw);
-  },
-  save(d){ localStorage.setItem("metaxp2", JSON.stringify(d)); }
-};
-let state = store.load();
+function renderHeader(){ $("#charNameView").textContent=state.character.name; $("#charLevel").textContent=state.character.level; $("#charXP").textContent=state.character.xp; $("#charNext").textContent=state.character.next; const pct=Math.min(100,Math.round(100*state.character.xp/state.character.next)); $("#charXPFill").style.width=pct+"%" }
 
-// ======= XP & Nível =======
-// ======= Streaks (sequências) =======
-function streakBonus(streak){
-  if(streak >= 30) return 10;  // +10 XP
-  if(streak >= 7)  return 5;   // +5 XP
-  if(streak >= 3)  return 2;   // +2 XP
-  return 0;
-}
-// Dada uma missão e uma data YYYY-MM-DD, retorna a ocorrência anterior (YYYY-MM-DD) se existir
-function prevOccurrenceDate(m, dateKey){
-  if(m.recur === "once") return null;
-  const d = ymdToDate(dateKey);
-  // retroceder até 28 dias no máximo (segurança) procurando o dia válido
-  for(let i=1;i<=28;i++){
-    const prev = addDays(d, -i);
-    const prevKey = todayKey(prev);
-    if(prevKey < m.date) break; // antes do início da missão
-    if(m.recur === "weekly"){
-      const wd = prev.getDay(); // 0..6
-      if((m.weekdays||[]).includes(wd)) return prevKey;
-    }
-  }
-  return null;
-}
+$$(".tab").forEach(t=>t.addEventListener("click",()=>{ $$(".tab").forEach(x=>x.classList.remove("active")); t.classList.add("active"); const n=t.dataset.tab; $("#tab-missoes").style.display=n==="missoes"?"":"none"; $("#tab-atributos").style.display=n==="atributos"?"":"none"; $("#tab-conquistas").style.display=n==="conquistas"?"":"none"; $("#tab-calendario").style.display=n==="calendario"?"":"none"; $("#tab-config").style.display=n==="config"?"":"none" }))
 
-function nextRequirement(prev){ return Math.max(10, Math.round(prev*1.10)); } // +10% arredondado
-function grantXPCharacter(xp){
-  let c = state.character;
-  c.xp += xp;
-  while(c.xp >= c.next){
-    c.xp -= c.next;
-    c.level += 1;
-    c.next = nextRequirement(c.next);
-    toast(`Subiu para o nível ${c.level}!`);
-  }
-}
-function findAttr(id){ return state.attributes.find(a=>a.id===id); }
-function grantXPAttribute(id, xp){
-  const a = findAttr(id);
-  if(!a) return;
-  a.xp += xp;
-  while(a.xp >= a.next){
-    a.xp -= a.next;
-    a.level += 1;
-    a.next = nextRequirement(a.next);
-  }
-}
+$("#editCharBtn").onclick=()=>{ $("#charName").value=state.character.name; $("#baseNext").value=state.character.baseNext||100; openModal("#charModal") }
+$("#charSave").onclick=()=>{ const name=$("#charName").value.trim()||"Aventureiro"; const baseNext=Math.max(10,parseInt($("#baseNext").value||"100",10)); state.character.name=name; state.character.baseNext=baseNext; if(state.character.level===1) state.character.next=baseNext; store.save(state); renderHeader(); closeModal("#charModal") }
 
-// ======= UI: Header =======
-function renderHeader(){
-  $("#charNameView").textContent = state.character.name;
-  $("#charLevel").textContent = state.character.level;
-  $("#charXP").textContent = state.character.xp;
-  $("#charNext").textContent = state.character.next;
-  const pct = Math.min(100, Math.round(100 * state.character.xp / state.character.next));
-  $("#charXPFill").style.width = pct + "%";
-}
+function renderAttributes(){ const wrap=$("#attrList"); wrap.innerHTML=""; if(state.attributes.length===0){$("#attrEmpty").style.display=""; return} $("#attrEmpty").style.display="none"; const attrs=[...state.attributes].sort((a,b)=>b.level-a.level|| (b.xp/b.next)-(a.xp/a.next)); attrs.forEach(a=>{const pct=Math.round(100*a.xp/a.next); const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="row" style="align-items:center;"><div style="flex:1;"><div style="font-weight:900;">${a.name}</div><div class="small muted">Nv. ${a.level} — ${a.xp}/${a.next} XP</div><div class="xpbar small" style="margin-top:6px;"><div class="bar"><div class="fill" style="width:${pct}%"></div></div></div></div><button class="chip wood" data-del="${a.id}">Excluir</button></div>`; wrap.appendChild(card)}); $$("button[data-del]").forEach(b=>b.onclick=()=>{const id=b.getAttribute("data-del"); if(confirm("Excluir atributo? Missões que o usam perderão essa referência.")){ state.attributes=state.attributes.filter(x=>x.id!==id); state.missions.forEach(m=>m.attrXP=(m.attrXP||[]).filter(ax=>ax.attrId!==id)); store.save(state); renderAttributes(); renderMissionModalAttrList() }}) }
+$("#addAttr").onclick=()=>{ const name=$("#newAttrName").value.trim(); if(!name) return alert("Dê um nome ao atributo."); const id="a"+Math.random().toString(36).slice(2,8); state.attributes.push({id,name,level:1,xp:0,next:100}); $("#newAttrName").value=""; store.save(state); renderAttributes(); renderMissionModalAttrList() }
 
-// ======= Tabs =======
-$$(".tab").forEach(t => t.addEventListener("click", () => {
-  $$(".tab").forEach(x => x.classList.remove("active"));
-  t.classList.add("active");
-  const name = t.dataset.tab;
-  $("#tab-missoes").style.display = name==="missoes" ? "" : "none";
-  $("#tab-atributos").style.display = name==="atributos" ? "" : "none";
-}));
+function missionOccurrencesInRange(missions,start,end){const occs=[]; const sK=todayKey(start), eK=todayKey(end); missions.forEach(m=>{ if(m.recur==="once"){ if(m.date>=sK && m.date<=eK) occs.push({id:`${m.id}@${m.date}`,mission:m,date:m.date,time:m.time||"00:00"}) } else if(m.recur==="weekly"){ const w=m.weekdays||[]; let d=new Date(start); while(d<=end){ if(w.includes(d.getDay())){const k=todayKey(d); if(k>=m.date) occs.push({id:`${m.id}@${k}`,mission:m,date:k,time:m.time||"00:00"}) } d=addDays(d,1) } } }); return occs}
+function renderMissions(){ const list=$("#missionList"); list.innerHTML=""; const base=$("#baseDate").value? ymdToDate($("#baseDate").value): new Date(); const mode=$("#range").value; let start,end; if(mode==="day"){start=base; end=base} if(mode==="week"){[start,end]=weekRange(base)} if(mode==="month"){[start,end]=monthRange(base)} const occs=missionOccurrencesInRange(state.missions,start,end).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)); $("#missionEmpty").style.display=occs.length?"none":""; occs.forEach(occ=>{const m=occ.mission; const completed=!!state.completions[occ.id]; const attrs=(m.attrXP||[]).map(ax=>{const attr=findAttr(ax.attrId); return attr? `<span class="attrTag">${attr.name}: +${ax.xp} XP</span>`:""}).join(" "); const wrap=document.createElement("div"); wrap.className="goal"; wrap.innerHTML=`<div class="meta"><div><strong>🗡️ ${m.title}</strong> ${completed?"✅":""} <span class="chip">🔥 x${m.streak||0}</span></div><div class="small muted">${occ.date} ${fmtTime(m.time)} • ${m.recur==="once"?"Única":"Semanal"}</div><div class="small" style="margin-top:6px;"><span class="chip">Personagem: +${m.charXP||0} XP</span><span class="chip">Bônus streak: +${streakBonus(m.streak||0)} XP</span>${attrs}</div></div><div class="actions">${completed? `<button data-undo="${occ.id}" class="wood">Desfazer</button>`:`<button data-done="${occ.id}" class="wood">Concluir</button>`}<button data-delm="${m.id}" class="wood" style="background:linear-gradient(90deg,#5c2a2a,#7a1f1f);">Excluir</button></div>`; list.appendChild(wrap)}); $$("button[data-done]").forEach(b=>b.onclick=()=>completeOccurrence(b.getAttribute("data-done"))); $$("button[data-undo]").forEach(b=>b.onclick=()=>undoOccurrence(b.getAttribute("data-undo"))); $$("button[data-delm]").forEach(b=>b.onclick=()=>{const id=b.getAttribute("data-delm"); if(confirm("Excluir esta missão (todas as ocorrências futuras)?")){ state.missions=state.missions.filter(x=>x.id!==id); Object.keys(state.completions).forEach(k=>{if(k.startsWith(id+'@')) delete state.completions[k]}); store.save(state); renderMissions(); renderCalendar(); renderAchievements(); renderStats() }}) }
+function completeOccurrence(occId){ if(state.completions[occId]) return; const [mId,date]=occId.split("@"); const m=state.missions.find(x=>x.id===mId); if(!m) return; const prevKey=prevOccurrenceDate(m,date); if(prevKey && state.completions[`${m.id}@${prevKey}`]) m.streak=(m.streak||0)+1; else m.streak=1; m.lastDone=date; const bonus=streakBonus(m.streak||0); const charXP=(m.charXP||0)+bonus; grantXPCharacter(charXP); (m.attrXP||[]).forEach(ax=>grantXPAttribute(ax.attrId,ax.xp||0)); state.completions[occId]=true; state.xpLog.push({date, charXP, missionId:m.id}); store.save(state); renderHeader(); renderAttributes(); renderMissions(); renderCalendar(); renderAchievements(); renderStats() }
+function undoOccurrence(occId){ if(!state.completions[occId]) return; if(!confirm("Isso apenas desmarca a conclusão. O XP já concedido permanece (sem reversão). Continuar?")) return; delete state.completions[occId]; store.save(state); renderMissions(); renderCalendar(); renderAchievements(); renderStats() }
 
-// ======= Personagem Modal =======
-$("#editCharBtn").onclick = () => {
-  $("#charName").value = state.character.name;
-  $("#baseNext").value = state.character.baseNext || 100;
-  openModal("#charModal");
-};
-$("#charSave").onclick = () => {
-  const name = $("#charName").value.trim() || "Herói";
-  const baseNext = Math.max(10, parseInt($("#baseNext").value||"100",10));
-  state.character.name = name;
-  state.character.baseNext = baseNext;
-  if(state.character.level===1 && state.character.next !== baseNext){
-    // só alinhar se ainda no lvl 1 (evita bagunçar progressões existentes)
-    state.character.next = baseNext;
-  }
-  store.save(state);
-  renderHeader();
-  closeModal("#charModal");
-};
+function openModal(s){$(s).classList.add("open")} function closeModal(s){$(s).classList.remove("open")}
+$("#newMission").onclick=()=>{ openModal("#missionModal"); renderMissionModalAttrList() }
+$("#createMission").onclick=()=>{ const title=$("#mTitle").value.trim(); if(!title) return alert("Dê um título para a missão."); const recur=$("#mRecur").value; const date=$("#mDate").value||todayKey(); const time=$("#mTime").value||"07:00"; const charXP=Math.max(0,parseInt($("#mXP").value||"0",10)); const payload={id:"m"+Math.random().toString(36).slice(2,8), title,recur,date,time, weekdays:recur==="weekly"?selectedWeekdays():[], charXP, attrXP:collectAttrAlloc(), streak:0, lastDone:null}; state.missions.push(payload); store.save(state); $("#mTitle").value=""; $("#mXP").value="10"; $("#mDate").value=""; $("#mTime").value="07:00"; $$("#mWeekdays input[type=checkbox]").forEach(cb=>cb.checked=false); $("#mAttrList").innerHTML=""; closeModal("#missionModal"); renderMissions(); renderCalendar() }
+function selectedWeekdays(){return $$("#mWeekdays input[type=checkbox]:checked").map(cb=>parseInt(cb.value,10))}
+function renderMissionModalAttrList(){ const box=$("#mAttrList"); box.innerHTML=""; if(state.attributes.length===0){ box.innerHTML=`<p class="muted small">Sem atributos. Crie alguns na aba “Atributos”.</p>`; return } addAttrAllocLine() }
+$("#addAttrAlloc").onclick=addAttrAllocLine
+function addAttrAllocLine(){ const box=$("#mAttrList"); const line=document.createElement("div"); line.className="attrLine"; const sel=document.createElement("select"); state.attributes.forEach(a=>{const o=document.createElement("option"); o.value=a.id; o.textContent=a.name; sel.appendChild(o)}); const xp=document.createElement("input"); xp.type="number"; xp.min="0"; xp.value="5"; xp.style.width="120px"; const del=document.createElement("button"); del.textContent="–"; del.className="wood"; del.onclick=()=>line.remove(); line.append(sel,xp,del); box.appendChild(line) }
+function collectAttrAlloc(){ return $$("#mAttrList .attrLine").map(l=>({attrId:$("select",l).value, xp:Math.max(0,parseInt($("input",l).value||"0",10))})) }
 
-// ======= Atributos =======
-function renderAttributes(){
-  const wrap = $("#attrList");
-  wrap.innerHTML = "";
-  if(state.attributes.length===0){
-    $("#attrEmpty").style.display = "";
-    return;
-  }
-  $("#attrEmpty").style.display = "none";
-  state.attributes.forEach(a => {
-    const card = document.createElement("div");
-    card.className = "card";
-    const pct = Math.round(100 * a.xp / a.next);
-    card.innerHTML = `
-      <div class="row" style="align-items:center;">
-        <div style="flex:1;">
-          <div style="font-weight:700;">${a.name}</div>
-          <div class="small muted">Nv. ${a.level} — ${a.xp}/${a.next} XP</div>
-          <div class="xpbar small" style="margin-top:8px;">
-            <div class="bar"><div class="fill" style="width:${pct}%"></div></div>
-          </div>
-        </div>
-        <button class="chip" data-del="${a.id}" style="background:#36132a;">Excluir</button>
-      </div>
-    `;
-    wrap.appendChild(card);
-  });
-  // delete listeners
-  $$("button[data-del]").forEach(b => b.onclick = () => {
-    const id = b.getAttribute("data-del");
-    if(confirm("Excluir atributo? Missões que o referenciam continuarão existindo.")){
-      state.attributes = state.attributes.filter(a => a.id !== id);
-      state.missions.forEach(m => {
-        m.attrXP = (m.attrXP||[]).filter(x => x.attrId !== id);
-      });
-      store.save(state); renderAttributes(); renderMissionModalAttrList();
-    }
-  });
-}
-$("#addAttr").onclick = () => {
-  const name = $("#newAttrName").value.trim();
-  if(!name) return alert("Dê um nome para o atributo.");
-  const id = "a"+Math.random().toString(36).slice(2,8);
-  state.attributes.push({ id, name, level:1, xp:0, next:100 });
-  $("#newAttrName").value = "";
-  store.save(state); renderAttributes(); renderMissionModalAttrList();
-};
+function renderAchievements(){ const box=$("#achList"); box.innerHTML=""; const ach=computeAchievements(); if(ach.length===0){$("#achEmpty").style.display=""; return} $("#achEmpty").style.display="none"; ach.forEach(a=>{ const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="row" style="align-items:center;"><div style="flex:1;"><div style="font-weight:900;"><span class="trophy">🏆</span>${a.title}</div><div class="muted small">${a.desc}</div></div><span class="chip">Obtida</span></div>`; box.appendChild(card) }) }
+function computeAchievements(){ const out=[]; const total=Object.keys(state.completions).length; if(total>=1) out.push({title:"Primeiro Passo",desc:"Conclua sua primeira missão."}); if(total>=10) out.push({title:"Dez Missões",desc:"Conclua 10 missões."}); if(total>=50) out.push({title:"Cinquenta Missões",desc:"Conclua 50 missões."}); if(state.character.level>=5) out.push({title:"Herói em Ascensão",desc:"Alcance nível 5 do personagem."}); if(state.character.level>=10) out.push({title:"Campeão do Reino",desc:"Alcance nível 10 do personagem."}); const ms=Math.max(0,...state.missions.map(m=>m.streak||0)); if(ms>=3) out.push({title:"Chama Acesa",desc:"Mantenha sequência 3+ na mesma missão."}); if(ms>=7) out.push({title:"Forja Incandescente",desc:"Sequência 7+ na mesma missão."}); if(ms>=30) out.push({title:"Lenda das Chamas",desc:"Sequência 30+ na mesma missão."}); return out }
 
-// ======= Missões =======
-function renderMissions(){
-  const list = $("#missionList");
-  list.innerHTML = "";
-  const base = $("#baseDate").value ? ymdToDate($("#baseDate").value) : new Date();
-  const mode = $("#range").value;
-  let start, end;
-  if(mode==="day"){ start = base; end = base; }
-  if(mode==="week"){ [start, end] = weekRange(base); }
-  if(mode==="month"){ [start, end] = monthRange(base); }
+let calCursor=new Date()
+function renderCalendar(){ $("#calMonthTitle").textContent=fmtMonthTitle(calCursor); const grid=$("#calendarGrid"); grid.innerHTML=""; const y=calCursor.getFullYear(), m=calCursor.getMonth(); const first=new Date(y,m,1); const start=first.getDay(); const days=new Date(y,m+1,0).getDate(); for(let i=0;i<start;i++){const d=document.createElement("div"); d.className="calcell"; grid.appendChild(d)} for(let day=1;day<=days;day++){ const key=todayKey(new Date(y,m,day)); const count=state.xpLog.filter(x=>x.date===key).length; const cell=document.createElement("div"); cell.className="calcell"; cell.innerHTML=`<div class="daynum">${String(day).padStart(2,'0')}</div><div class="calmark">${count>0? "✅×"+count:""}</div>`; grid.appendChild(cell) } }
+$("#prevMonth").onclick=()=>{ calCursor=new Date(calCursor.getFullYear(), calCursor.getMonth()-1, 1); renderCalendar() }
+$("#nextMonth").onclick=()=>{ calCursor=new Date(calCursor.getFullYear(), calCursor.getMonth()+1, 1); renderCalendar() }
 
-  const occs = missionOccurrencesInRange(state.missions, start, end);
-  $("#missionEmpty").style.display = occs.length ? "none" : "";
-  occs.sort((a,b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+function renderStats(){ const today=todayKey(); const [ws,we]=weekRange(new Date()); const inWeek=state.xpLog.filter(x=>{const d=ymdToDate(x.date); return d>=ws && d<=we}); const todayXP=state.xpLog.filter(x=>x.date===today).reduce((s,x)=>s+x.charXP,0); const weekXP=inWeek.reduce((s,x)=>s+x.charXP,0); $("#xpToday").textContent=todayXP; $("#xpWeek").textContent=weekXP; const streakOfDay=state.missions.filter(m=> (m.lastDone===today) && (m.streak||0)>=2).length; $("#streakOfDay").textContent=streakOfDay }
 
-  occs.forEach(occ => {
-    const m = occ.mission;
-    const wrap = document.createElement("div");
-    wrap.className = "goal";
-    const completed = !!state.completions[occ.id];
-    const attrs = (m.attrXP||[]).map(ax => {
-      const attr = findAttr(ax.attrId);
-      return attr ? `<span class="attrTag">${attr.name}: +${ax.xp} XP</span>` : "";
-    }).join(" ");
-    wrap.innerHTML = `
-      <div class="meta">
-        <div><strong>${m.title}</strong> ${completed ? "✅" : ""} <span class="chip">🔥 x${m.streak||0}</span></div>
-        <div class="small muted">
-          ${occ.date} ${fmtTime(m.time)} • ${m.recur==="once" ? "Única" : "Semanal"}
-        </div>
-        <div class="small" style="margin-top:6px;">
-          <span class="chip">Personagem: +${m.charXP||0} XP</span> <span class="chip">Bônus streak: +${streakBonus(m.streak||0)} XP</span>
-          ${attrs}
-        </div>
-      </div>
-      <div class="actions">
-        ${completed ? `<button data-undo="${occ.id}">Desfazer</button>` : `<button data-done="${occ.id}">Concluir</button>`}
-        <button data-delm="${m.id}">Excluir</button>
-      </div>
-    `;
-    list.appendChild(wrap);
-  });
+$("#range").value="day"; $("#baseDate").valueAsDate=new Date(); $("#range").onchange=renderMissions; $("#baseDate").onchange=renderMissions
+$$(".modal").forEach(m=>m.addEventListener("click",(e)=>{ if(e.target===m) m.classList.remove("open") }))
+function toast(msg){ const el=document.createElement("div"); el.textContent=msg; el.style.position="fixed"; el.style.bottom="20px"; el.style.left="50%"; el.style.transform="translateX(-50%)"; el.style.background="#14100b"; el.style.border="1px solid #2a2217"; el.style.padding="10px 14px"; el.style.borderRadius="999px"; el.style.boxShadow="0 10px 30px #00000055"; el.style.zIndex="1000"; document.body.appendChild(el); setTimeout(()=>{el.remove()},1800) }
 
-  // handlers
-  $$("button[data-done]").forEach(b => b.onclick = () => completeOccurrence(b.getAttribute("data-done")));
-  $$("button[data-undo]").forEach(b => b.onclick = () => undoOccurrence(b.getAttribute("data-undo")));
-  $$("button[data-delm]").forEach(b => b.onclick = () => {
-    const id = b.getAttribute("data-delm");
-    if(confirm("Excluir esta missão (todas as ocorrências futuras)?")){
-      state.missions = state.missions.filter(x => x.id !== id);
-      // limpeza de completions relacionadas
-      Object.keys(state.completions).forEach(k => { if(k.startsWith(id+"@")) delete state.completions[k]; });
-      store.save(state); renderMissions();
-    }
-  });
-}
+$("#exportBtn").onclick=()=>{ const data=JSON.stringify(state,null,2); const blob=new Blob([data],{type:"application/json"}); const url=URL.createObjectURL(blob); const a=document.createElement("a"); a.href=url; a.download="metaxp_backup.json"; a.click(); URL.revokeObjectURL(url) }
+$("#importFile").onchange=(e)=>{ const file=e.target.files[0]; if(!file) return; const reader=new FileReader(); reader.onload=()=>{ try{ const obj=JSON.parse(reader.result); state=obj; store.save(state); renderHeader(); renderAttributes(); renderMissions(); renderCalendar(); renderAchievements(); renderStats(); alert("Importação concluída!") }catch(err){ alert("Arquivo inválido.") } }; reader.readAsText(file) }
 
-function missionOccurrencesInRange(missions, start, end){
-  const occs = [];
-  const startKey = todayKey(start);
-  const endKey = todayKey(end);
-  missions.forEach(m => {
-    if(m.recur==="once"){
-      if(m.date >= startKey && m.date <= endKey){
-        occs.push({ id: `${m.id}@${m.date}`, mission:m, date:m.date, time:m.time||"00:00" });
-      }
-    } else if(m.recur==="weekly"){
-      // gerar datas de start..end conforme weekdays
-      const weekdays = m.weekdays||[]; // [0..6]
-      let d = new Date(start);
-      while(d <= end){
-        if(weekdays.includes(d.getDay())){
-          const key = todayKey(d);
-          // começa a valer a partir de m.date (data de início)
-          if(key >= m.date){ 
-            occs.push({ id: `${m.id}@${key}`, mission:m, date:key, time:m.time||"00:00" });
-          }
-        }
-        d = addDays(d, 1);
-      }
-    }
-  });
-  return occs;
-}
+function init(){ renderHeader(); renderAttributes(); renderMissions(); renderCalendar(); renderAchievements(); renderStats() } init()
 
-function completeOccurrence(occId){
-  if(state.completions[occId]) return;
-  const [mId, date] = occId.split("@");
-  const m = state.missions.find(x => x.id===mId);
-  if(!m) return;
-  // Streaks
-  const prevKey = prevOccurrenceDate(m, date);
-  if(prevKey && state.completions[`${m.id}@${prevKey}`]){
-    m.streak = (m.streak||0) + 1;
-  } else {
-    m.streak = 1;
-  }
-  m.lastDone = date;
-  // XP personagem (com bônus por streak)
-  const bonus = streakBonus(m.streak||0);
-  grantXPCharacter((m.charXP||0) + bonus);
-  // XP atributos
-  (m.attrXP||[]).forEach(ax => grantXPAttribute(ax.attrId, ax.xp||0));
-  state.completions[occId] = true;
-  store.save(state);
-  renderHeader(); renderAttributes(); renderMissions();
-}
-
-function undoOccurrence(occId){
-  if(!state.completions[occId]) return;
-  // Para simplificar, não desfazemos XP (evita inconsistência após level-up).
-  // Em uso real, poderíamos manter um log de XP para reverter. Aqui só liberamos a ocorrência.
-  if(!confirm("Desfazer apenas marcar como concluída (XP já ganho será mantido). Continuar?")) return;
-  delete state.completions[occId];
-  store.save(state);
-  renderMissions();
-}
-
-// ======= Modal Missão (criação) =======
-function openModal(sel){ $(sel).classList.add("open"); }
-function closeModal(sel){ $(sel).classList.remove("open"); }
-
-$("#newMission").onclick = () => { openModal("#missionModal"); renderMissionModalAttrList(); };
-$("#createMission").onclick = () => {
-  const title = $("#mTitle").value.trim();
-  const recur = $("#mRecur").value;
-  const date = $("#mDate").value || todayKey();
-  const time = $("#mTime").value || "09:00";
-  const charXP = Math.max(0, parseInt($("#mXP").value||"0",10));
-  if(!title) return alert("Dê um título para a missão.");
-  const payload = {
-    id: "m"+Math.random().toString(36).slice(2,8),
-    title, recur, date, time,
-    weekdays: recur==="weekly" ? selectedWeekdays() : [],
-    charXP,
-    attrXP: collectAttrAlloc()
-  };
-  payload.streak = payload.streak || 0;
-  payload.lastDone = payload.lastDone || null;
-  state.missions.push(payload);
-  store.save(state);
-  $("#mTitle").value = ""; $("#mXP").value = "10"; $("#mDate").value = ""; $("#mTime").value="09:00";
-  $$("#mWeekdays input[type=checkbox]").forEach(cb => cb.checked=false);
-  $("#mAttrList").innerHTML = "";
-  closeModal("#missionModal");
-  renderMissions();
-};
-
-function selectedWeekdays(){
-  return $$("#mWeekdays input[type=checkbox]:checked").map(cb => parseInt(cb.value,10));
-}
-function renderMissionModalAttrList(){
-  const box = $("#mAttrList");
-  box.innerHTML = "";
-  if(state.attributes.length===0){
-    box.innerHTML = `<p class="muted small">Sem atributos. Crie alguns na aba “Atributos”.</p>`;
-    return;
-  }
-  // start with one line by default
-  addAttrAllocLine();
-}
-$("#addAttrAlloc").onclick = addAttrAllocLine;
-
-function addAttrAllocLine(){
-  const box = $("#mAttrList");
-  const line = document.createElement("div");
-  line.className = "attrLine";
-  const sel = document.createElement("select");
-  state.attributes.forEach(a => {
-    const opt = document.createElement("option");
-    opt.value = a.id; opt.textContent = a.name;
-    sel.appendChild(opt);
-  });
-  const xp = document.createElement("input");
-  xp.type = "number"; xp.min = "0"; xp.value = "5";
-  xp.style.width = "120px";
-  const del = document.createElement("button");
-  del.textContent = "–"; del.style.background = "#36132a";
-  del.onclick = () => line.remove();
-  line.append(sel, xp, del);
-  box.appendChild(line);
-}
-function collectAttrAlloc(){
-  return $$("#mAttrList .attrLine").map(l => {
-    const attrId = $("select", l).value;
-    const xp = Math.max(0, parseInt($("input", l).value||"0",10));
-    return { attrId, xp };
-  });
-}
-
-// ======= Filtros Missões =======
-$("#range").value = "day";
-$("#baseDate").valueAsDate = new Date();
-$("#range").onchange = renderMissions;
-$("#baseDate").onchange = renderMissions;
-
-// ======= Modals close on backdrop =======
-$$(".modal").forEach(m => m.addEventListener("click", (e)=>{ if(e.target===m) m.classList.remove("open"); }));
-
-// ======= Inicialização =======
-function init(){
-  renderHeader();
-  renderAttributes();
-  renderMissions();
-}
-function toast(msg){
-  const el = document.createElement("div");
-  el.textContent = msg;
-  el.style.position = "fixed";
-  el.style.bottom = "20px";
-  el.style.left = "50%";
-  el.style.transform = "translateX(-50%)";
-  el.style.background = "#0c1530";
-  el.style.border = "1px solid #243043";
-  el.style.padding = "10px 14px";
-  el.style.borderRadius = "999px";
-  el.style.boxShadow = "0 10px 30px #00000055";
-  el.style.zIndex = "1000";
-  document.body.appendChild(el);
-  setTimeout(()=>{ el.remove(); }, 1800);
-}
-
-init();

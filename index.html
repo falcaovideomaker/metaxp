@@ -5,145 +5,172 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="theme-color" content="#22c55e">
+  <meta name="theme-color" content="#6b4f2c">
   <link rel="manifest" href="manifest.json">
-  <title>Meta XP — Gamificador</title>
+  <title>Meta XP — Edição RPG</title>
   <style>
-    :root { --bg:#0b1020; --card:#11162a; --muted:#94a3b8; --accent:#22c55e; --accent2:#2dd4bf; --text:#e2e8f0; --border:#223047; }
-    * { box-sizing:border-box; }
-    html,body{height:100%;}
-    body{margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; background:linear-gradient(180deg, #0b1020, #0b1224); color:var(--text);}
-    header{position:sticky; top:0; backdrop-filter:saturate(120%) blur(10px); background:#0b1020dd; border-bottom:1px solid #1e293b; padding:14px 16px; z-index:20;}
+    :root{
+      --bg:#17130e; --bg2:#1e1912; --paper:#221b12; --ink:#e8d9b8; --muted:#cbbf9b;
+      --accent:#d4a05a; --accent2:#8fb873; --edge:#3a2b1a; --blood:#7a1f1f;
+    }
+    *{box-sizing:border-box} html,body{height:100%}
+    body{ margin:0; font-family: ui-serif, Georgia, 'Times New Roman', serif; color:var(--ink);
+      background:
+        radial-gradient(1200px 800px at 15% -10%, #31251566, transparent),
+        radial-gradient(1200px 800px at 115% 110%, #2a201466, transparent),
+        linear-gradient(180deg, var(--bg), var(--bg2));
+    }
+    .wood{ background:linear-gradient(180deg, #3a2b1a, #2c2115); border:1px solid #23190f; box-shadow: inset 0 1px 0 #5b4228, 0 8px 24px #00000070; }
+    header{ position:sticky; top:0; z-index:50; padding:12px 14px; border-bottom:1px solid #2a2217; backdrop-filter: blur(6px) saturate(120%); background:#110d09cc; }
     .row{display:flex; gap:10px; flex-wrap:wrap;}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px; margin-bottom:16px; box-shadow:0 6px 18px #00000040;}
-    input, select, button, textarea{border-radius:12px; border:1px solid #334155; background:#0b1224; color:var(--text); padding:12px; font-size:16px; outline:none;}
-    input:focus, select:focus, textarea:focus{border-color:#22c55e55;}
-    button{cursor:pointer; background:linear-gradient(90deg, var(--accent), var(--accent2)); border:none; font-weight:600;}
-    .muted{color:var(--muted); font-size:12px;}
-    .tabs{display:flex; gap:8px; padding:8px; border-bottom:1px solid #1f2937; position:sticky; top:86px; background:#0b1020f0; z-index:19;}
-    .tab{flex:1; text-align:center; padding:10px 12px; border:1px solid var(--border); border-radius:999px; background:#0c1530; cursor:pointer;}
-    .tab.active{outline:2px solid #22c55e66;}
-    main{max-width:860px; margin:0 auto; padding:12px 16px 80px;}
+    .card{background:linear-gradient(180deg, #1e1912, #17130e); border:1px solid #2a2217; border-radius:14px; padding:14px; margin-bottom:12px; box-shadow: 0 10px 30px #0008, inset 0 1px 0 #2a2217;}
+    input, select, button, textarea{ border-radius:10px; border:1px solid #2a2217; background:#14100b; color:var(--ink); padding:10px; font-size:16px; outline:none; }
+    input:focus, select:focus, textarea:focus{border-color:#8f6a3a;}
+    button{cursor:pointer; background:linear-gradient(90deg, #6b4f2c, #8a6a3f); color:#f5e8c8; font-weight:700;}
+    .muted{color:var(--muted); font-size:12px;} main{max-width:920px; margin:0 auto; padding:12px 14px 90px;}
+    .crest{display:flex; align-items:center; gap:12px;}
+    .seal{width:42px; height:42px; border-radius:50%; border:2px solid #8a6a3f; background:radial-gradient(circle at 30% 30%, #d4a05a, #6b4f2c); display:flex; align-items:center; justify-content:center; font-weight:900; color:#2b1a0a; box-shadow: 0 2px 8px #0008;}
     .xpbar{display:flex; align-items:center; gap:10px;}
-    .xpbar .bar{flex:1; height:12px; background:#0c1530; border:1px solid var(--border); border-radius:999px; overflow:hidden;}
-    .xpbar .fill{height:100%; width:0%; background:linear-gradient(90deg, var(--accent), var(--accent2));}
-    .chip{display:inline-block; padding:6px 10px; border-radius:999px; background:#0c1530; border:1px solid var(--border); font-size:12px;}
-    .goal{display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border:1px solid var(--border); border-radius:12px; background:#0c1530;}
-    .goal .meta{flex:1;}
-    .actions{display:flex; gap:8px;}
-    .small{font-size:12px;}
-    .filterbar{display:flex; gap:8px; margin-bottom:12px;}
-    .addfab{position:fixed; right:18px; bottom:18px; border-radius:999px; padding:14px 18px; font-size:18px; z-index:30;}
-    .empty{opacity:.75; text-align:center; padding:24px;}
-    footer {padding:40px 16px; text-align:center; color:#94a3b8; font-size:12px;}
-    /* modal */
-    .modal{position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; background:#00000080; z-index:50;}
-    .modal.open{display:flex;}
-    .sheet{background:#0b1224; border-top-left-radius:18px; border-top-right-radius:18px; width:100%; max-width:860px; padding:16px; border:1px solid var(--border); max-height:85vh; overflow:auto;}
+    .xpbar .bar{flex:1; height:12px; background:#0e0b08; border:1px solid #2a2217; border-radius:999px; overflow:hidden; box-shadow: inset 0 1px 3px #000;}
+    .xpbar .fill{height:100%; width:0%; background:linear-gradient(90deg, #d4a05a, #8fb873);} .chip{display:inline-flex; align-items:center; gap:6px; padding:6px 10px; border-radius:999px; background:#14100b; border:1px solid #2a2217; font-size:12px;}
+    .tabs{display:flex; gap:8px; padding:8px; position:sticky; top:84px; background:#0f0c09ee; border-bottom:1px solid #2a2217; z-index:40;}
+    .tab{flex:1; text-align:center; padding:10px 12px; border:1px solid #2a2217; border-radius:999px; background:#14100b; cursor:pointer;} .tab.active{outline:2px solid #8a6a3faa;}
+    .goal{display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border:1px solid #2a2217; border-radius:12px; background:#14100b;} .goal .meta{flex:1;}
+    .actions{display:flex; gap:8px;} .small{font-size:12px;} .filterbar{display:flex; gap:8px; margin-bottom:12px;}
+    .addfab{position:fixed; right:18px; bottom:18px; border-radius:999px; padding:14px 18px; font-size:18px; z-index:60; box-shadow:0 8px 20px #0008;}
+    .empty{opacity:.8; text-align:center; padding:24px;} footer {padding:40px 16px; text-align:center; color:#bda77d; font-size:12px;}
+    .modal{position:fixed; inset:0; display:none; align-items:flex-end; justify-content:center; background:#00000090; z-index:80;} .modal.open{display:flex;}
+    .sheet{background:#1a140d; border-top-left-radius:18px; border-top-right-radius:18px; width:100%; max-width:920px; padding:16px; border:1px solid #2a2217; max-height:85vh; overflow:auto; box-shadow:0 -10px 30px #000a;}
     .grid2{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
-    .attrLine{display:flex; gap:8px; align-items:center; margin-top:8px;}
-    .attrTag{padding:4px 8px; border-radius:8px; border:1px solid var(--border); background:#101a33; font-size:12px;}
+    .attrLine{display:flex; gap:8px; align-items:center; margin-top:8px;} .attrTag{padding:4px 8px; border-radius:8px; border:1px solid #2a2217; background:#14100b; font-size:12px;}
+    .trophy{font-size:20px; margin-right:6px;} .calendar{display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-top:10px;}
+    .calcell{aspect-ratio:1/1; border:1px solid #2a2217; border-radius:10px; background:#14100b; display:flex; flex-direction:column; justify-content:space-between; padding:6px;}
+    .daynum{font-size:12px; color:#bda77d;} .calmark{font-size:14px;}
   </style>
 </head>
 <body>
   <header>
     <div class="row" style="align-items:center;">
-      <div style="flex:1;">
-        <div style="font-weight:700; font-size:18px;" id="charNameView">Herói</div>
-        <div class="xpbar small">
-          <div class="chip">Nv. <span id="charLevel">1</span></div>
-          <div class="bar"><div class="fill" id="charXPFill"></div></div>
-          <div class="chip"><span id="charXP">0</span>/<span id="charNext">100</span> XP</div>
+      <div class="crest" style="flex:1;">
+        <div class="seal">XP</div>
+        <div style="flex:1;">
+          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+            <div style="font-weight:900; letter-spacing:.5px;" id="charNameView">Aventureiro</div>
+            <span class="chip">Nv. <span id="charLevel">1</span></span>
+          </div>
+          <div class="xpbar small" style="margin-top:6px;">
+            <div class="bar"><div class="fill" id="charXPFill"></div></div>
+            <div class="chip"><span id="charXP">0</span>/<span id="charNext">100</span></div>
+          </div>
         </div>
       </div>
-      <button id="editCharBtn" class="chip" style="background:#132033;">Editar</button>
+      <button id="editCharBtn" class="chip wood">⚙️ Editar</button>
     </div>
   </header>
 
   <div class="tabs">
-    <div class="tab active" data-tab="missoes">Missões</div>
-    <div class="tab" data-tab="atributos">Atributos</div>
+    <div class="tab active" data-tab="missoes">🗡️ Missões</div>
+    <div class="tab" data-tab="atributos">🛡️ Atributos</div>
+    <div class="tab" data-tab="conquistas">🏆 Conquistas</div>
+    <div class="tab" data-tab="calendario">📜 Calendário</div>
+    <div class="tab" data-tab="config">⚙️ Configurações</div>
   </div>
 
   <main>
-    <!-- Missões -->
     <section id="tab-missoes">
       <div class="filterbar">
-        <select id="range">
-          <option value="day">Hoje</option>
-          <option value="week">Semana</option>
-          <option value="month">Mês</option>
-        </select>
+        <select id="range"><option value="day">Hoje</option><option value="week">Semana</option><option value="month">Mês</option></select>
         <input type="date" id="baseDate">
-        <button id="newMission" class="addfab">＋ Missão</button>
+        <button id="newMission" class="addfab wood">＋ Missão</button>
+      </div>
+      <div class="card">
+        <div class="row">
+          <span class="chip">🔥 Streak ativa do dia: <b id="streakOfDay">0</b></span>
+          <span class="chip">XP hoje: <b id="xpToday">0</b></span>
+          <span class="chip">XP na semana: <b id="xpWeek">0</b></span>
+        </div>
       </div>
       <div id="missionList"></div>
-      <div class="empty" id="missionEmpty">Nada por aqui. Toque em “＋ Missão”.</div>
+      <div class="empty" id="missionEmpty">Nenhuma missão. Toque em “＋ Missão”.</div>
     </section>
 
-    <!-- Atributos -->
     <section id="tab-atributos" style="display:none;">
       <div class="card">
         <div class="row" style="align-items:flex-end;">
           <input id="newAttrName" placeholder="Novo atributo (ex.: Força, Disciplina)" style="flex:2">
-          <button id="addAttr" style="flex:1">Criar atributo</button>
+          <button id="addAttr" style="flex:1" class="wood">Criar atributo</button>
         </div>
-        <p class="muted">Cada atributo tem nível próprio. Ganhe XP neles ao concluir missões associadas.</p>
+        <p class="muted">Cada atributo tem nível e XP próprios. Conclua missões vinculadas pra evoluí-los.</p>
       </div>
       <div id="attrList"></div>
       <div class="empty" id="attrEmpty">Sem atributos ainda. Crie o primeiro acima 👆</div>
     </section>
+
+    <section id="tab-conquistas" style="display:none;">
+      <div id="achList"></div>
+      <div class="empty" id="achEmpty">Nenhuma conquista ainda. Continue sua jornada!</div>
+    </section>
+
+    <section id="tab-calendario" style="display:none;">
+      <div class="card">
+        <div class="row" style="align-items:center;">
+          <button id="prevMonth" class="wood">◀</button>
+          <div style="flex:1; text-align:center; font-weight:900;" id="calMonthTitle">Mês</div>
+          <button id="nextMonth" class="wood">▶</button>
+        </div>
+        <div class="row" style="gap:6px; margin-top:8px;">
+          <span class="chip" style="flex:1; text-align:center;">Dom</span>
+          <span class="chip" style="flex:1; text-align:center;">Seg</span>
+          <span class="chip" style="flex:1; text-align:center;">Ter</span>
+          <span class="chip" style="flex:1; text-align:center;">Qua</span>
+          <span class="chip" style="flex:1; text-align:center;">Qui</span>
+          <span class="chip" style="flex:1; text-align:center;">Sex</span>
+          <span class="chip" style="flex:1; text-align:center;">Sáb</span>
+        </div>
+        <div class="calendar" id="calendarGrid"></div>
+      </div>
+    </section>
+
+    <section id="tab-config" style="display:none;">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Dados</h3>
+        <div class="row">
+          <button id="exportBtn" class="wood">Exportar JSON</button>
+          <label class="chip" style="cursor:pointer;">Importar JSON <input id="importFile" type="file" accept="application/json" style="display:none"></label>
+        </div>
+        <p class="muted">Use exportar/importar para backup do seu progresso.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Aparência</h3>
+        <div class="row">
+          <button id="themeMedieval" class="wood">RPG Medieval (ativo)</button>
+        </div>
+        <p class="muted">Mais temas em breve.</p>
+      </div>
+    </section>
   </main>
 
-  <footer>
-    PWA instalável e offline. No Safari: <b>Compartilhar ▸ Adicionar à Tela de Início</b>.
-  </footer>
+  <footer>Meta XP — Edição RPG. Instale: <b>Compartilhar ▸ Adicionar à Tela de Início</b>.</footer>
 
-  <!-- Modal: Editar personagem -->
   <div class="modal" id="charModal">
     <div class="sheet">
-      <h3 style="margin:0 0 10px 0;">Personagem</h3>
+      <h3 style="margin:0 0 10px 0;">Herói</h3>
       <div class="grid2">
-        <div>
-          <label class="small muted">Nome</label>
-          <input id="charName" placeholder="Nome do personagem">
-        </div>
-        <div>
-          <label class="small muted">XP por nível inicial</label>
-          <input id="baseNext" type="number" min="10" value="100">
-          <p class="muted small">A cada nível, a necessidade aumenta em ~10%.</p>
-        </div>
+        <div><label class="small muted">Nome</label><input id="charName" placeholder="Nome do personagem"></div>
+        <div><label class="small muted">XP por nível inicial</label><input id="baseNext" type="number" min="10" value="100"><p class="muted small">A cada nível, a necessidade aumenta em ~10%.</p></div>
       </div>
-      <div class="row" style="margin-top:10px; justify-content:flex-end;">
-        <button id="charSave">Salvar</button>
-      </div>
+      <div class="row" style="margin-top:10px; justify-content:flex-end;"><button id="charSave" class="wood">Salvar</button></div>
     </div>
   </div>
 
-  <!-- Modal: Nova Missão -->
   <div class="modal" id="missionModal">
     <div class="sheet">
       <h3 style="margin:0 0 10px 0;">Nova missão</h3>
       <div class="grid2">
-        <div>
-          <label class="small muted">Título</label>
-          <input id="mTitle" placeholder="Ex.: Ler 10 páginas">
-        </div>
-        <div>
-          <label class="small muted">Recorrência</label>
-          <select id="mRecur">
-            <option value="once">Única</option>
-            <option value="weekly">Semanal</option>
-          </select>
-        </div>
-        <div>
-          <label class="small muted">Data</label>
-          <input type="date" id="mDate">
-        </div>
-        <div>
-          <label class="small muted">Horário</label>
-          <input type="time" id="mTime" value="09:00">
-        </div>
+        <div><label class="small muted">Título</label><input id="mTitle" placeholder="Ex.: Treinar 30 min"></div>
+        <div><label class="small muted">Recorrência</label><select id="mRecur"><option value="once">Única</option><option value="weekly">Semanal</option></select></div>
+        <div><label class="small muted">Data</label><input type="date" id="mDate"></div>
+        <div><label class="small muted">Horário</label><input type="time" id="mTime" value="07:00"></div>
         <div>
           <label class="small muted">Repetir (semana)</label>
           <div class="row" id="mWeekdays">
@@ -155,27 +182,16 @@
             <label class="attrTag"><input type="checkbox" value="6"> Sáb</label>
             <label class="attrTag"><input type="checkbox" value="0"> Dom</label>
           </div>
-          <p class="muted small">Use os dias apenas se a recorrência for semanal.</p>
+          <p class="muted small">Use os dias apenas se for semanal.</p>
         </div>
-        <div>
-          <label class="small muted">XP do personagem</label>
-          <input type="number" id="mXP" min="0" value="10">
-        </div>
-        <div>
-          <label class="small muted">Atributos (XP por atributo)</label>
-          <div id="mAttrList"></div>
-          <button id="addAttrAlloc" class="chip" style="margin-top:8px;">+ Atribuição</button>
-        </div>
+        <div><label class="small muted">XP do personagem</label><input type="number" id="mXP" min="0" value="10"></div>
+        <div><label class="small muted">Atributos (XP por atributo)</label><div id="mAttrList"></div><button id="addAttrAlloc" class="chip" style="margin-top:8px;">+ Atribuição</button></div>
       </div>
-      <div class="row" style="margin-top:10px; justify-content:flex-end;">
-        <button id="createMission">Criar missão</button>
-      </div>
+      <div class="row" style="margin-top:10px; justify-content:flex-end;"><button id="createMission" class="wood">Criar missão</button></div>
     </div>
   </div>
 
   <script src="app.js"></script>
-  <script>
-    if ('serviceWorker' in navigator) { navigator.serviceWorker.register('sw.js'); }
-  </script>
+  <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js');}</script>
 </body>
 </html>

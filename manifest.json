@@ -1,9 +1,9 @@
 {
-  "name": "Meta XP — Gamificador",
+  "name": "Meta XP — Edição RPG",
   "short_name": "Meta XP",
   "start_url": ".",
   "display": "standalone",
-  "background_color": "#0b1020",
-  "theme_color": "#22c55e",
+  "background_color": "#17130e",
+  "theme_color": "#6b4f2c",
   "icons": []
 }
