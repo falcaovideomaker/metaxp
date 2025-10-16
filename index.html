@@ -7,7 +7,7 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="theme-color" content="#6b4f2c">
   <link rel="manifest" href="manifest.json">
-  <title>Meta XP — Edição RPG</title>
+  <title>Meta XP — Edição RPG (Ouro)</title>
   <style>
     :root{
       --bg:#17130e; --bg2:#1e1912; --paper:#221b12; --ink:#e8d9b8; --muted:#cbbf9b;
@@ -46,6 +46,7 @@
     .trophy{font-size:20px; margin-right:6px;} .calendar{display:grid; grid-template-columns: repeat(7, 1fr); gap:8px; margin-top:10px;}
     .calcell{aspect-ratio:1/1; border:1px solid #2a2217; border-radius:10px; background:#14100b; display:flex; flex-direction:column; justify-content:space-between; padding:6px;}
     .daynum{font-size:12px; color:#bda77d;} .calmark{font-size:14px;}
+    .reward{display:flex; gap:12px; align-items:center; justify-content:space-between; padding:12px; border:1px solid #2a2217; border-radius:12px; background:#14100b;}
   </style>
 </head>
 <body>
@@ -64,6 +65,7 @@
           </div>
         </div>
       </div>
+      <span class="chip wood">🪙 Ouro: <b id="goldBalance">0</b></span>
       <button id="editCharBtn" class="chip wood">⚙️ Editar</button>
     </div>
   </header>
@@ -73,10 +75,12 @@
     <div class="tab" data-tab="atributos">🛡️ Atributos</div>
     <div class="tab" data-tab="conquistas">🏆 Conquistas</div>
     <div class="tab" data-tab="calendario">📜 Calendário</div>
+    <div class="tab" data-tab="rewards">💰 Recompensas</div>
     <div class="tab" data-tab="config">⚙️ Configurações</div>
   </div>
 
   <main>
+    <!-- Missões -->
     <section id="tab-missoes">
       <div class="filterbar">
         <select id="range"><option value="day">Hoje</option><option value="week">Semana</option><option value="month">Mês</option></select>
@@ -94,6 +98,7 @@
       <div class="empty" id="missionEmpty">Nenhuma missão. Toque em “＋ Missão”.</div>
     </section>
 
+    <!-- Atributos -->
     <section id="tab-atributos" style="display:none;">
       <div class="card">
         <div class="row" style="align-items:flex-end;">
@@ -106,11 +111,13 @@
       <div class="empty" id="attrEmpty">Sem atributos ainda. Crie o primeiro acima 👆</div>
     </section>
 
+    <!-- Conquistas -->
     <section id="tab-conquistas" style="display:none;">
       <div id="achList"></div>
       <div class="empty" id="achEmpty">Nenhuma conquista ainda. Continue sua jornada!</div>
     </section>
 
+    <!-- Calendário -->
     <section id="tab-calendario" style="display:none;">
       <div class="card">
         <div class="row" style="align-items:center;">
@@ -131,6 +138,27 @@
       </div>
     </section>
 
+    <!-- Recompensas -->
+    <section id="tab-rewards" style="display:none;">
+      <div class="card">
+        <div class="row" style="align-items:flex-end;">
+          <input id="rewardName" placeholder="Nome da recompensa (ex.: 🍕 Pizza com amigos)" style="flex:2">
+          <input id="rewardCost" type="number" min="1" value="50" style="width:140px" placeholder="Custo (ouro)">
+          <button id="addReward" class="wood" style="flex:1">Adicionar</button>
+        </div>
+        <p class="muted">Cadastre recompensas que podem ser “compradas” com ouro ganho por conquistas.</p>
+      </div>
+      <div id="rewardList"></div>
+      <div class="empty" id="rewardEmpty">Sem recompensas ainda. Crie a primeira acima 👆</div>
+
+      <div class="card" style="margin-top:12px;">
+        <h3 style="margin:0 0 8px 0;">Histórico</h3>
+        <div id="rewardHistory"></div>
+        <div class="muted small" id="rewardHistoryEmpty">Histórico vazio.</div>
+      </div>
+    </section>
+
+    <!-- Configurações -->
     <section id="tab-config" style="display:none;">
       <div class="card">
         <h3 style="margin:0 0 8px 0;">Dados</h3>
@@ -150,7 +178,7 @@
     </section>
   </main>
 
-  <footer>Meta XP — Edição RPG. Instale: <b>Compartilhar ▸ Adicionar à Tela de Início</b>.</footer>
+  <footer>Meta XP — Ouro & Conquistas. Instale: <b>Compartilhar ▸ Adicionar à Tela de Início</b>.</footer>
 
   <div class="modal" id="charModal">
     <div class="sheet">
