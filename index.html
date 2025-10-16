@@ -201,6 +201,9 @@
       <h3 style="margin:0 0 10px 0;">Herói</h3>
       <div class="grid2">
         <div><label class="small muted">Nome</label><input id="charName" placeholder="Nome do personagem"></div>
+        <label for="charAvatar">Imagem de perfil:</label>
+<div id="avatarPicker" style="display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;"></div>
+<img id="charAvatarPreview" src="" alt="Avatar" style="width:64px; height:64px; border-radius:8px; border:2px solid var(--accent);">
         <div><label class="small muted">XP por nível inicial</label><input id="baseNext" type="number" min="10" value="100"><p class="muted small">A cada nível, a necessidade aumenta em ~10%.</p></div>
       </div>
       <div class="row" style="margin-top:10px; justify-content:flex-end;"><button id="charSave" class="wood">Salvar</button></div>
