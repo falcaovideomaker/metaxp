@@ -14,10 +14,17 @@ const store={load(){const raw=localStorage.getItem("metaxp4"); if(!raw) return {
 }; return JSON.parse(raw)}, save(d){localStorage.setItem("metaxp4",JSON.stringify(d))}}; let state=store.load()
 
 // ===== XP, Ouro e Streak =====
+function diffMul(d){ if(d==='hard') return 2; if(d==='medium') return 1.5; return 1; }
+function diffLabel(d){ return d==='hard'?'Difícil': (d==='medium'?'Média':'Fácil'); }
+
 function nextRequirement(prev){return Math.max(10,Math.round(prev*1.10))}
 function grantXPCharacter(xp){ let c=state.character; c.xp+=xp; let leveled=false; while(c.xp>=c.next){ c.xp-=c.next; c.level+=1; c.next=nextRequirement(c.next); leveled=true; awardGold("level:"+c.level, 10, `Nível ${c.level}`) } if(leveled) toast(`🎉 Subiu para o nível ${c.level}! +10 🪙`) }
 function findAttr(id){return state.attributes.find(a=>a.id===id)} function grantXPAttribute(id,xp){const a=findAttr(id); if(!a) return; a.xp+=xp; while(a.xp>=a.next){a.xp-=a.next; a.level+=1; a.next=nextRequirement(a.next)}}
-function streakBonus(s){if(s>=30)return 10; if(s>=7)return 5; if(s>=3)return 2; return 0}
+function streakBonus(s, d){
+  let base = 0; if(s>=30) base=10; else if(s>=7) base=5; else if(s>=3) base=2; else base=0;
+  const mul = diffMul(d||'easy');
+  return Math.round(base * mul);
+}
 function prevOccurrenceDate(m,dateKey){ if(m.recur==="once")return null; const d=ymdToDate(dateKey); for(let i=1;i<=28;i++){ const prev=addDays(d,-i); const k=todayKey(prev); if(k<m.date)break; if(m.recur==="weekly"){ const wd=prev.getDay(); if((m.weekdays||[]).includes(wd)) return k } } return null }
 
 // ===== UI Header =====
@@ -52,7 +59,7 @@ function renderMissions(){ const list=$("#missionList"); list.innerHTML=""; cons
   if(mode==="day"){start=base; end=base} if(mode==="week"){[start,end]=weekRange(base)} if(mode==="month"){[start,end]=monthRange(base)}
   const occs=missionOccurrencesInRange(state.missions,start,end).sort((a,b)=>a.date.localeCompare(b.date)||a.time.localeCompare(b.time)); $("#missionEmpty").style.display=occs.length?"none":"";
   occs.forEach(occ=>{ const m=occ.mission; const completed=!!state.completions[occ.id]; const attrs=(m.attrXP||[]).map(ax=>{const attr=findAttr(ax.attrId); return attr? `<span class="attrTag">${attr.name}: +${ax.xp} XP</span>`:""}).join(" ");
-    const wrap=document.createElement("div"); wrap.className="goal"; wrap.innerHTML=`<div class="meta"><div><strong>🗡️ ${m.title}</strong> ${completed?"✅":""} <span class="chip">🔥 x${m.streak||0}</span></div><div class="small muted">${occ.date} ${fmtTime(m.time)} • ${m.recur==="once"?"Única":"Semanal"}</div><div class="small" style="margin-top:6px;"><span class="chip">Personagem: +${m.charXP||0} XP</span><span class="chip">Bônus streak: +${streakBonus(m.streak||0)} XP</span>${attrs}</div></div><div class="actions">${completed? `<button data-undo="${occ.id}" class="wood">Desfazer</button>`:`<button data-done="${occ.id}" class="wood">Concluir</button>`}<button data-delm="${m.id}" class="wood" style="background:linear-gradient(90deg,#5c2a2a,#7a1f1f);">Excluir</button></div>`;
+    const wrap=document.createElement("div"); wrap.className="goal"; wrap.innerHTML=`<div class="meta"><div><strong>🗡️ ${m.title}</strong> ${completed?"✅":""} <span class="chip">🔥 x${m.streak||0}</span></div><div class="small muted">${occ.date} ${fmtTime(m.time)} • ${m.recur==="once"?"Única":"Semanal"}</div><div class="small" style="margin-top:6px;"><span class="chip">Dificuldade: ${diffLabel(m.difficulty||"easy")}</span><span class="chip">Mult.: x${diffMul(m.difficulty||"easy")}</span><span class="chip">Personagem: ~+${Math.round((m.charXP||0)*diffMul(m.difficulty||"easy"))} XP</span><span class="chip">Bônus streak: +${streakBonus(m.streak||0, m.difficulty||"easy")} XP</span>${attrs}</div></div><div class="actions">${completed? `<button data-undo="${occ.id}" class="wood">Desfazer</button>`:`<button data-done="${occ.id}" class="wood">Concluir</button>`}<button data-delm="${m.id}" class="wood" style="background:linear-gradient(90deg,#5c2a2a,#7a1f1f);">Excluir</button></div>`;
     list.appendChild(wrap) });
   $$("button[data-done]").forEach(b=>b.onclick=()=>completeOccurrence(b.getAttribute("data-done")));
   $$("button[data-undo]").forEach(b=>b.onclick=()=>undoOccurrence(b.getAttribute("data-undo")));
@@ -60,7 +67,9 @@ function renderMissions(){ const list=$("#missionList"); list.innerHTML=""; cons
 }
 function completeOccurrence(occId){ if(state.completions[occId]) return; const [mId,date]=occId.split("@"); const m=state.missions.find(x=>x.id===mId); if(!m) return;
   const prevKey=prevOccurrenceDate(m,date); if(prevKey && state.completions[`${m.id}@${prevKey}`]) m.streak=(m.streak||0)+1; else m.streak=1; m.lastDone=date;
-  awardStreakGold(m); const bonus=streakBonus(m.streak||0); const charXP=(m.charXP||0)+bonus; grantXPCharacter(charXP); (m.attrXP||[]).forEach(ax=>grantXPAttribute(ax.attrId,ax.xp||0));
+  awardStreakGold(m); const mul = diffMul(m.difficulty||'easy');
+const bonus = streakBonus(m.streak||0, m.difficulty||'easy');
+const charXP = Math.round((m.charXP||0)*mul) + bonus; grantXPCharacter(charXP); (m.attrXP||[]).forEach(ax=>grantXPAttribute(ax.attrId, Math.round((ax.xp||0)* (diffMul(m.difficulty||'easy')) )));
   state.completions[occId]=true; state.xpLog.push({date, charXP, missionId:m.id}); store.save(state);
   renderHeader(); renderAttributes(); renderMissions(); renderCalendar(); renderAchievements(); renderStats()
 }
@@ -108,7 +117,7 @@ function renderRewardHistory(){ const box=$("#rewardHistory"); const empty=$("#r
 // ===== Modais & Diversos =====
 function openModal(s){$(s).classList.add("open")} function closeModal(s){$(s).classList.remove("open")}
 $("#newMission").onclick=()=>{ openModal("#missionModal"); renderMissionModalAttrList() }
-$("#createMission").onclick=()=>{ const title=$("#mTitle").value.trim(); if(!title) return alert("Dê um título para a missão."); const recur=$("#mRecur").value; const date=$("#mDate").value||todayKey(); const time=$("#mTime").value||"07:00"; const charXP=Math.max(0,parseInt($("#mXP").value||"0",10)); const payload={id:"m"+Math.random().toString(36).slice(2,8), title,recur,date,time, weekdays:recur==="weekly"?selectedWeekdays():[], charXP, attrXP:collectAttrAlloc(), streak:0, lastDone:null}; state.missions.push(payload); store.save(state); $("#mTitle").value=""; $("#mXP").value="10"; $("#mDate").value=""; $("#mTime").value="07:00"; $$("#mWeekdays input[type=checkbox]").forEach(cb=>cb.checked=false); $("#mAttrList").innerHTML=""; closeModal("#missionModal"); renderMissions(); renderCalendar() }
+$("#createMission").onclick=()=>{ const title=$("#mTitle").value.trim(); if(!title) return alert("Dê um título para a missão."); const recur=$("#mRecur").value; const date=$("#mDate").value||todayKey(); const time=$("#mTime").value||"07:00"; const charXP=Math.max(0,parseInt($("#mXP").value||"0",10)); const payload={id:"m"+Math.random().toString(36).slice(2,8), title,recur,date,time, difficulty:($('#mDiff')? $('#mDiff').value : 'easy'), weekdays:recur==="weekly"?selectedWeekdays():[], charXP, attrXP:collectAttrAlloc(), streak:0, lastDone:null}; state.missions.push(payload); store.save(state); $("#mTitle").value=""; $("#mXP").value="10"; $("#mDate").value=""; $("#mTime").value="07:00"; $$("#mWeekdays input[type=checkbox]").forEach(cb=>cb.checked=false); $("#mAttrList").innerHTML=""; closeModal("#missionModal"); renderMissions(); renderCalendar() }
 function selectedWeekdays(){return $$("#mWeekdays input[type=checkbox]:checked").map(cb=>parseInt(cb.value,10))}
 function renderMissionModalAttrList(){ const box=$("#mAttrList"); box.innerHTML=""; if(state.attributes.length===0){ box.innerHTML=`<p class="muted small">Sem atributos. Crie alguns na aba “Atributos”.</p>`; return } addAttrAllocLine() }
 $("#addAttrAlloc").onclick=addAttrAllocLine
