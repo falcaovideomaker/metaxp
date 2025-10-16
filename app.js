@@ -653,12 +653,19 @@ function applyTheme(theme){
       t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u, '').trim();
     });
   } else if (theme === 'medieval') {
-    const originals = [
-      '🗡️ Missões','🛡️ Atributos','🏆 Conquistas',
-      '📜 Calendário','💰 Recompensas','⚙️ Configurações'
-    ];
-    tabs.forEach((t,i)=>{ if(originals[i]) t.textContent = originals[i] });
-  }
+  const originals = {
+    missoes: '🗡️ Missões',
+    atributos: '🛡️ Atributos',
+    conquistas: '🏆 Conquistas',
+    calendario: '📜 Calendário',
+    rewards: '💰 Recompensas',
+    survival: '🌿 Sobrevivência',
+    config: '⚙️ Configurações'
+  };
+  tabs.forEach((t)=>{
+    const key = t.dataset.tab;
+    if (originals[key]) t.textContent = originals[key];
+  });
 }
 function ensureThemeButtons(){
   let btnMed=$("#themeMedieval"), btnPink=$("#themePink"), btnMin=$("#themeMinimal");
