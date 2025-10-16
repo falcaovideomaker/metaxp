@@ -669,3 +669,81 @@ document.addEventListener('DOMContentLoaded', ()=>{
   renderAll();
   bootTheme();
 });
+// --- HOTFIX: inicialização resiliente dos temas (sem <script> tags) --- //
+(function(){
+  function qs(sel, root=document){ return root.querySelector(sel) }
+
+  function ensureThemeButtons(){
+    const configTab = qs('#tab-config') || document;
+
+    // Remove mensagens "Carregando temas..."
+    const status =
+      qs('#themesStatus') ||
+      qs('[data-themes-status]') ||
+      Array.from(configTab.querySelectorAll('.muted, p, div'))
+        .find(el => /Carregando temas/i.test((el.textContent||'')));
+
+    if (status) status.remove();
+
+    // Garante botões
+    let btnMed = qs('#themeMedieval') || qs('#themeMedievalBtn');
+    let btnPink = qs('#themePink') || qs('#themePinkBtn');
+    let btnMin  = qs('#themeMinimal') || qs('#themeMinimalBtn');
+
+    if (!btnMed || !btnPink || !btnMin) {
+      const card = document.createElement('div');
+      card.className = 'card';
+      card.innerHTML = `
+        <h3 style="margin:0 0 8px 0;">Aparência</h3>
+        <div class="row">
+          <button id="themeMedieval" class="wood">RPG Medieval</button>
+          <button id="themePink" class="wood">Pink</button>
+          <button id="themeMinimal" class="wood">Minimal</button>
+        </div>
+        <p class="muted">Escolha um tema acima. Sua preferência fica salva neste dispositivo.</p>
+      `;
+      const configSection = qs('#tab-config') || qs('main') || document.body;
+      configSection.prepend(card);
+      btnMed = qs('#themeMedieval');
+      btnPink = qs('#themePink');
+      btnMin  = qs('#themeMinimal');
+    }
+
+    function applyTheme(theme){
+      try { localStorage.setItem('metaxp_theme', theme); } catch(e){}
+      document.documentElement.setAttribute('data-theme', theme);
+
+      // Minimal: remove emojis no rótulo das abas (se houver)
+      const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
+      if (theme === 'minimal') {
+        tabs.forEach(t => {
+          const txt = (t.textContent || '');
+          // remove prefixos não alfanuméricos (emoji, etc.)
+          t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u,'').trim();
+        });
+      }
+    }
+
+    // Evita múltiplos listeners duplicados
+    [btnMed, btnPink, btnMin].forEach((b, i) => {
+      if (!b) return;
+      const flag = '__themeBound';
+      if (!b[flag]) {
+        b[flag] = true;
+        const t = i===0 ? 'medieval' : i===1 ? 'pink' : 'minimal';
+        b.addEventListener('click', () => applyTheme(t));
+      }
+    });
+
+    // Aplica o tema salvo (ou medieval)
+    const saved = (localStorage.getItem('metaxp_theme') || 'medieval');
+    applyTheme(saved);
+  }
+
+  // Se o app.js está no fim do body, DOM já deve estar pronto; mas garantimos:
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', ensureThemeButtons, { once: true });
+  } else {
+    ensureThemeButtons();
+  }
+})();
