@@ -715,9 +715,20 @@ document.addEventListener('DOMContentLoaded', ()=>{
 
       // Minimal: remove emojis no rótulo das abas (se houver)
       const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
-      if (theme === 'minimal') {
-        tabs.forEach(t => {
-          const txt = (t.textContent || '');
+if (theme === 'minimal' || theme === 'pink') {
+  tabs.forEach(t => {
+    const txt = (t.textContent || '');
+    t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u,'').trim();
+  });
+} else if (theme === 'medieval') {
+  // Restaura os emojis originais das abas
+  const originals = [
+    '🗡️ Missões', '🛡️ Atributos', '🏆 Conquistas',
+    '📜 Calendário', '💰 Recompensas', '⚙️ Configurações'
+  ];
+  const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
+  tabs.forEach((t,i)=>{ if(originals[i]) t.textContent = originals[i]; });
+}
           // remove prefixos não alfanuméricos (emoji, etc.)
           t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u,'').trim();
         });
