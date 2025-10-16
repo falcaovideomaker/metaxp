@@ -51,6 +51,22 @@ const store = {
 };
 let state = store.load();
 
+// --- Sobrevivência: init ---
+if (!state.survival) state.survival = {};        // { 'YYYY-MM-DD': { sleep:number, water:number, awarded?:true } }
+if (!state.meta) state.meta = {};                // reserva (se precisar futuramente)
+
+// Garante atributo "Saúde"
+function ensureHealthAttribute(){
+  const exists = state.attributes?.some(a => a.name.toLowerCase() === 'saúde' || a.id === 'health');
+  if (!exists){
+    const id = 'health';
+    if (!state.attributes) state.attributes = [];
+    state.attributes.push({ id, name:'Saúde', level:1, xp:0, next:100 });
+    store.save(state);
+  }
+}
+ensureHealthAttribute();
+
 /////////////////////////////
 // Progressão / Dificuldade
 /////////////////////////////
@@ -128,6 +144,7 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
     conquistas: "#tab-conquistas",
     calendario: "#tab-calendario",
     rewards: "#tab-rewards",
+   survival: "#tab-survival",
     config: "#tab-config"
   };
   Object.entries(map).forEach(([k,sel])=>{
@@ -669,6 +686,145 @@ function ensureThemeButtons(){
   applyTheme(localStorage.getItem('metaxp_theme') || state.theme || 'medieval');
 }
 
+// ====== Sobrevivência (Sono & Água) ======
+const SV_SLEEP_GOAL = 8.0;   // horas
+const SV_WATER_GOAL = 2.0;   // litros
+const SV_CHAR_XP_ON_GOAL = 5;     // XP no personagem por meta batida
+const SV_HEALTH_XP_ON_GOAL = 5;   // XP no atributo "Saúde" por meta batida
+
+function svGet(day){ return state.survival[day] || { sleep:0, water:0 } }
+function svSet(day, data){ state.survival[day] = { sleep: data.sleep||0, water: data.water||0, awarded: data.awarded||false } }
+
+function renderSurvival(){
+  // data "Hoje" por padrão
+  const today = todayKey();
+  const dateInput = $("#svDate");
+  if (!dateInput.value) dateInput.value = today;
+  $("#svGoalsText").textContent = `${SV_SLEEP_GOAL}h de sono • ${SV_WATER_GOAL.toFixed(1)}L de água`;
+
+  // Preenche campos com o que houver salvo
+  const rec = svGet(dateInput.value);
+  $("#svSleep").value = rec.sleep || "";
+  $("#svWater").value = rec.water || "";
+
+  renderSurvivalHistory();
+}
+
+$("#svToday")?.addEventListener("click", ()=>{
+  $("#svDate").valueAsDate = new Date();
+  const rec = svGet(todayKey());
+  $("#svSleep").value = rec.sleep || "";
+  $("#svWater").value = rec.water || "";
+});
+
+$("#svSave")?.addEventListener("click", ()=>{
+  const day = $("#svDate").value || todayKey();
+  const sleep = parseFloat($("#svSleep").value || "0");
+  const water = parseFloat($("#svWater").value || "0");
+
+  if ((isNaN(sleep) || sleep<=0) && (isNaN(water) || water<=0)){
+    alert("Digite pelo menos um valor (> 0) para salvar.");
+    return;
+  }
+  if (sleep<0 || sleep>24){ alert("Horas de sono deve estar entre 0 e 24."); return; }
+  if (water<0){ alert("Água deve ser >= 0."); return; }
+
+  const prev = svGet(day);
+  const alreadyAwarded = !!prev.awarded;
+  svSet(day, { sleep, water, awarded: prev.awarded });
+  store.save(state);
+
+  // Regras de meta e XP (uma vez por dia)
+  const hitSleep = sleep >= SV_SLEEP_GOAL;
+  const hitWater = water >= SV_WATER_GOAL;
+
+  if (!alreadyAwarded && (hitSleep || hitWater)){
+    // concede XP no personagem + atributo "Saúde" por cada meta batida
+    let totalChar = 0, totalHealth = 0;
+    const health = state.attributes.find(a => a.name.toLowerCase()==='saúde' || a.id==='health');
+    if (hitSleep){ totalChar += SV_CHAR_XP_ON_GOAL; totalHealth += SV_HEALTH_XP_ON_GOAL; }
+    if (hitWater){ totalChar += SV_CHAR_XP_ON_GOAL; totalHealth += SV_HEALTH_XP_ON_GOAL; }
+
+    if (totalChar>0) grantXPCharacter(totalChar);
+    if (health && totalHealth>0) grantXPAttribute(health.id, totalHealth);
+
+    // marca como premiado no dia pra não duplicar
+    const d = svGet(day);
+    d.awarded = true;
+    svSet(day, d);
+    store.save(state);
+
+    toast(`🌿 Metas do dia atingidas! +${totalChar} XP personagem, +${totalHealth} XP em Saúde`);
+  } else {
+    toast(`🌿 Dados de ${day} salvos!`);
+  }
+
+  renderHeader();
+  renderAttributes();
+  renderSurvivalHistory();
+});
+
+// histórico (últimos 7 dias) com mini-barras
+function renderSurvivalHistory(){
+  const box = $("#svHistory");
+  box.innerHTML = "";
+
+  // pega últimos 7 dias em ordem decrescente (hoje -> -6)
+  const days = [];
+  const today = new Date();
+  for (let i=0;i<7;i++){
+    const d = addDays(today, -i);
+    const k = todayKey(d);
+    if (state.survival[k]) days.push(k);
+  }
+  if (days.length===0){
+    box.innerHTML = `<div class="muted">Sem registros nos últimos 7 dias.</div>`;
+    return;
+  }
+
+  const table = document.createElement("div");
+  table.style.display = "grid";
+  table.style.gridTemplateColumns = "120px 1fr 1fr";
+  table.style.gap = "8px";
+  table.style.alignItems = "center";
+
+  // header
+  table.innerHTML = `
+    <div class="muted small">Data</div>
+    <div class="muted small">😴 Sono</div>
+    <div class="muted small">💧 Água</div>
+  `;
+
+  days.forEach(k=>{
+    const r = svGet(k);
+    // % para as barras com base nas metas
+    const pSleep = Math.min(100, Math.round((r.sleep||0)/SV_SLEEP_GOAL*100));
+    const pWater = Math.min(100, Math.round((r.water||0)/SV_WATER_GOAL*100));
+    const okSleep = (r.sleep||0) >= SV_SLEEP_GOAL;
+    const okWater = (r.water||0) >= SV_WATER_GOAL;
+
+    const bar = (pct, ok, label)=>`
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div style="flex:1; height:10px; border:1px solid #2a2217; border-radius:999px; background:#0e0b08; overflow:hidden;">
+          <div style="height:100%; width:${pct}%; ${ok?'background:linear-gradient(90deg,#8fb873,#5aa75a);':'background:linear-gradient(90deg,#6b4f2c,#8a6a3f);'}"></div>
+        </div>
+        <span class="small ${ok?'':'muted'}">${label}</span>
+      </div>
+    `;
+
+    const row = document.createElement("div");
+    row.style.display = "contents"; // pra usar grid
+    row.innerHTML = `
+      <div><span class="chip">${k}</span></div>
+      <div>${bar(pSleep, okSleep, (r.sleep??0)+'h')}</div>
+      <div>${bar(pWater, okWater, (r.water??0)+'L')}</div>
+    `;
+    table.appendChild(row);
+  });
+
+  box.appendChild(table);
+}
+
 /////////////////////////////
 // UI util
 /////////////////////////////
@@ -709,6 +865,7 @@ function renderAll(){
   renderRewards();
   renderRewardHistory();
   ensureThemeButtons();
+  renderSurvival();
 }
 
 if(document.readyState === 'loading'){
