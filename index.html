@@ -114,15 +114,12 @@
       <div class="empty" id="missionEmpty">Nenhuma missão. Toque em “＋ Missão”.</div>
     </section>
 
+    <!-- ===== Atributos ===== -->
     <section id="tab-atributos" style="display:none;">
       <div class="card">
         <div class="row" style="align-items:flex-end;">
-          <!-- formulário antigo (mantido) -->
-          <input id="newAttrName" placeholder="Novo atributo (ex.: Força, Disciplina)" style="flex:2">
-          <button id="addAttr" style="flex:1" class="wood">Criar atributo</button>
-
-          <!-- novo: botão que abre o modal com ícones -->
-          <button class="wood" style="flex:1" onclick="openModal('#attrNewModal')">Novo atributo (com ícone)</button>
+          <!-- único botão: abre o modal com grade de ícones -->
+          <button class="wood" style="flex:1" onclick="openModal('#attrNewModal')">Novo atributo</button>
         </div>
         <p class="muted">Cada atributo tem nível e XP próprios. Conclua missões vinculadas pra evoluí-los.</p>
       </div>
@@ -267,7 +264,7 @@
     </div>
   </div>
 
-  <!-- NOVO: Modal “Novo atributo (com ícone)” -->
+  <!-- Modal “Novo atributo” (com ícone) -->
   <div class="modal" id="attrNewModal">
     <div class="sheet">
       <h3 style="margin:0 0 10px 0;">Novo atributo</h3>
@@ -276,10 +273,6 @@
         <div style="flex:2;">
           <label class="small muted">Nome do atributo</label>
           <input id="attrName2" placeholder="Ex.: Força, Inteligência">
-        </div>
-        <div style="flex:1;">
-          <label class="small muted">Buscar ícone</label>
-          <input id="iconSearch" placeholder="Espada, escudo, magia…">
         </div>
         <div>
           <label class="small muted">Pré-visualização</label>
@@ -293,7 +286,7 @@
       <div class="card" style="margin-top:12px;">
         <div class="muted small" style="margin-bottom:6px;">Escolha um ícone (carregado de <code>icons/attributes/</code>)</div>
         <div id="iconGrid" style="display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:8px; max-height:320px; overflow:auto;">
-          <!-- grade de ícones: o app.js (próxima etapa) vai preencher -->
+          <!-- a grade será preenchida via JS -->
         </div>
       </div>
 
