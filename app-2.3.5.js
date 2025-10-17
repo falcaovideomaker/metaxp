@@ -568,7 +568,7 @@ function maxAttrLevel(){ return Math.max(0, ...state.attributes.map(a=>a.level))
 // 20+ conquistas com ouro
 const ACHS = [
   {key:'first',   title:'Primeiro Passo',       desc:'Conclua sua primeira missão.',                 gold:2,  check:()=>Object.keys(state.completions).length>=1},
-  {key:'ten',     title:'Dez Missões',          desc:'Conclua 10 missões.',                          gold:5,  check:=>Object.keys(state.completions).length>=10},
+  {key:'ten',     title:'Dez Missões',          desc:'Conclua 10 missões.',                          gold:5,  check:()=>Object.keys(state.completions).length>=10},
   {key:'fifty',   title:'Cinquenta Missões',    desc:'Conclua 50 missões.',                          gold:15, check:()=>Object.keys(state.completions).length>=50},
   {key:'hundred', title:'Cem Missões',          desc:'Conclua 100 missões.',                         gold:25, check:()=>Object.keys(state.completions).length>=100},
 
