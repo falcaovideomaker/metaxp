@@ -158,57 +158,84 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   });
 }));
 
-// Abre o modal e carrega avatar + nome + baseNext
-$("#editCharBtn") && ($("#editCharBtn").onclick = ()=>{
-  $("#charName").value = state.character.name;
-  $("#baseNext").value = state.character.baseNext || 100;
+// --- Editar personagem (com avatar) ---
+$("#editCharBtn") && ($("#editCharBtn").onclick = () => {
+  // Preenche os campos atuais
+  const nameEl = $("#charName");
+  const baseNextEl = $("#baseNext");
+  if (nameEl) nameEl.value = state.character.name || "Aventureiro";
+  if (baseNextEl) baseNextEl.value = state.character.baseNext || 100;
 
-  // mostra o avatar atual ou o primeiro da lista
-  $("#charAvatarPreview").src = state.character.avatar || avatarPaths[0];
+  // Monta o picker de avatar (se existir o contêiner no HTML do modal)
+  const box = $("#avatarPicker");
+  const prev = $("#charAvatarPreview");
 
-  // renderiza os ícones disponíveis
-  renderAvatarPicker();
+  // Limpa e reconstrói a grade
+  if (box) {
+    box.innerHTML = "";
+
+    // Ajuste: coloque os PNGs dentro de /avatars/ (ou subpasta que você usou)
+    const count = 20; // qtos ícones você tem
+    const paths = Array.from({length: count}, (_,i)=> `avatars/avatar-${i+1}.png`);
+
+    // Mostra o atual no preview (se houver)
+    if (prev) {
+      prev.style.display = state.character.avatar ? "" : "none";
+      if (state.character.avatar) prev.src = state.character.avatar;
+    }
+
+    paths.forEach(path => {
+      const img = document.createElement("img");
+      img.src = path;
+      img.alt = "avatar";
+      img.style.width = "48px";
+      img.style.height = "48px";
+      img.style.borderRadius = "8px";
+      img.style.cursor = "pointer";
+      img.style.border = "2px solid transparent";
+
+      // realça se for o avatar atual
+      if (state.character.avatar === path) {
+        img.style.border = "2px solid var(--accent)";
+      }
+
+      img.addEventListener("click", () => {
+        state.character.avatar = path;
+        if (prev) { prev.src = path; prev.style.display = ""; }
+        store.save(state);
+
+        // re-render só do header para refletir o avatar
+        renderHeader();
+
+        // Ajusta bordas na grade para indicar o selecionado
+        Array.from(box.querySelectorAll("img")).forEach(el=>{
+          el.style.border = "2px solid transparent";
+        });
+        img.style.border = "2px solid var(--accent)";
+      });
+
+      box.appendChild(img);
+    });
+  }
 
   openModal("#charModal");
 });
-// Caminhos dos 20 ícones
-const avatarPaths = Array.from({length:20}, (_,i)=>`icons/avatar${i+1}.png`);
 
-// Renderiza as miniaturas dos avatares
-function renderAvatarPicker(){
-  const box = $("#avatarPicker");
-  if(!box) return;
-  box.innerHTML = "";
-  avatarPaths.forEach(path=>{
-    const img = document.createElement("img");
-    img.src = path;
-    img.style.width = "48px";
-    img.style.height = "48px";
-    img.style.borderRadius = "6px";
-    img.style.cursor = "pointer";
-    img.style.border = "2px solid transparent";
-    if(state.character.avatar === path)
-      img.style.border = "2px solid var(--accent)";
-    img.addEventListener("click", ()=>{
-      state.character.avatar = path;
-      $("#charAvatarPreview").src = path;
-      store.save(state);
-      renderAvatarPicker();
-    });
-    box.appendChild(img);
-  });
-}
-$("#charSave") && ($("#charSave").onclick = ()=>{
-  const name = ($("#charName")?.value||"").trim() || "Aventureiro";
-  const baseNext = Math.max(10, parseInt($("#baseNext")?.value||"100",10));
+// Salvar personagem (nome e XP/nível base)
+$("#charSave") && ($("#charSave").onclick = () => {
+  const name = ($("#charName")?.value || "").trim() || "Aventureiro";
+  const baseNext = Math.max(10, parseInt($("#baseNext")?.value || "100", 10));
+
   state.character.name = name;
   state.character.baseNext = baseNext;
-  if(state.character.level===1) state.character.next = baseNext;
+
+  // Se ainda está no nível 1, sincroniza a exigência de XP
+  if (state.character.level === 1) state.character.next = baseNext;
+
   store.save(state);
   renderHeader();
   closeModal("#charModal");
 });
-
 /////////////////////////////
 // Atributos
 /////////////////////////////
