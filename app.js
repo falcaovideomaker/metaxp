@@ -28,24 +28,24 @@ const store = {
   key: "metaxp6",
   load(){
     const raw = localStorage.getItem(this.key);
-    if(!raw) return {
-      character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100},
-      attributes:[],
-      missions:[],
-      completions:{},
-      xpLog:[],
-      gold:0,
-      achievementsAwarded:{},
-      rewards:[],
-      rewardsHistory:[],
-      theme: localStorage.getItem('metaxp_theme') || 'medieval'
-    };
-    try { return JSON.parse(raw) } catch(e){ return {
-      character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100},
-      attributes:[], missions:[], completions:{}, xpLog:[],
-      gold:0, achievementsAwarded:{}, rewards:[], rewardsHistory:[],
-      theme:'medieval'
-    }}
+if(!raw) return {
+  character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:""},
+  attributes:[],
+  missions:[],
+  completions:{},
+  xpLog:[],
+  gold:0,
+  achievementsAwarded:{},
+  rewards:[],
+  rewardsHistory:[],
+  theme: localStorage.getItem('metaxp_theme') || 'medieval'
+};
+try { return JSON.parse(raw) } catch(e){ return {
+  character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:""},
+  attributes:[], missions:[], completions:{}, xpLog:[],
+  gold:0, achievementsAwarded:{}, rewards:[], rewardsHistory:[],
+  theme:'medieval'
+}}
   },
   save(d){ localStorage.setItem(this.key, JSON.stringify(d)) }
 };
@@ -129,6 +129,11 @@ function renderHeader(){
   const pct = Math.min(100, Math.round(100*state.character.xp/state.character.next));
   $("#charXPFill") && ($("#charXPFill").style.width = pct+"%");
   $("#goldBalance") && ($("#goldBalance").textContent = state.gold);
+     // Atualiza o avatar no cabeçalho, se houver
+  const avatarEl = $("#charAvatarHeader");
+  if (avatarEl && state.character.avatar) {
+    avatarEl.src = state.character.avatar;
+    avatarEl.style.display = "block";
 }
 
 /////////////////////////////
@@ -153,11 +158,46 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   });
 }));
 
+// Abre o modal e carrega avatar + nome + baseNext
 $("#editCharBtn") && ($("#editCharBtn").onclick = ()=>{
-  $("#charName") && ($("#charName").value = state.character.name);
-  $("#baseNext") && ($("#baseNext").value = state.character.baseNext || 100);
+  $("#charName").value = state.character.name;
+  $("#baseNext").value = state.character.baseNext || 100;
+
+  // mostra o avatar atual ou o primeiro da lista
+  $("#charAvatarPreview").src = state.character.avatar || avatarPaths[0];
+
+  // renderiza os ícones disponíveis
+  renderAvatarPicker();
+
   openModal("#charModal");
 });
+// Caminhos dos 20 ícones
+const avatarPaths = Array.from({length:20}, (_,i)=>`icons/avatar${i+1}.png`);
+
+// Renderiza as miniaturas dos avatares
+function renderAvatarPicker(){
+  const box = $("#avatarPicker");
+  if(!box) return;
+  box.innerHTML = "";
+  avatarPaths.forEach(path=>{
+    const img = document.createElement("img");
+    img.src = path;
+    img.style.width = "48px";
+    img.style.height = "48px";
+    img.style.borderRadius = "6px";
+    img.style.cursor = "pointer";
+    img.style.border = "2px solid transparent";
+    if(state.character.avatar === path)
+      img.style.border = "2px solid var(--accent)";
+    img.addEventListener("click", ()=>{
+      state.character.avatar = path;
+      $("#charAvatarPreview").src = path;
+      store.save(state);
+      renderAvatarPicker();
+    });
+    box.appendChild(img);
+  });
+}
 $("#charSave") && ($("#charSave").onclick = ()=>{
   const name = ($("#charName")?.value||"").trim() || "Aventureiro";
   const baseNext = Math.max(10, parseInt($("#baseNext")?.value||"100",10));
