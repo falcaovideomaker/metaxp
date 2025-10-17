@@ -117,8 +117,12 @@
     <section id="tab-atributos" style="display:none;">
       <div class="card">
         <div class="row" style="align-items:flex-end;">
+          <!-- formulário antigo (mantido) -->
           <input id="newAttrName" placeholder="Novo atributo (ex.: Força, Disciplina)" style="flex:2">
           <button id="addAttr" style="flex:1" class="wood">Criar atributo</button>
+
+          <!-- novo: botão que abre o modal com ícones -->
+          <button class="wood" style="flex:1" onclick="openModal('#attrNewModal')">Novo atributo (com ícone)</button>
         </div>
         <p class="muted">Cada atributo tem nível e XP próprios. Conclua missões vinculadas pra evoluí-los.</p>
       </div>
@@ -171,32 +175,32 @@
     </section>
 
     <section id="tab-survival" style="display:none;">
-  <div class="card">
-    <h3 style="margin:0 0 8px 0;">Registros do dia</h3>
-    <div class="row" style="align-items:flex-end;">
-      <div>
-        <label class="small muted">Data</label>
-        <input id="svDate" type="date">
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Registros do dia</h3>
+        <div class="row" style="align-items:flex-end;">
+          <div>
+            <label class="small muted">Data</label>
+            <input id="svDate" type="date">
+          </div>
+          <button id="svToday" class="wood">Hoje</button>
+          <div>
+            <label class="small muted">😴 Horas de sono</label>
+            <input id="svSleep" type="number" step="0.5" min="0" max="24" placeholder="ex.: 7.5" style="width:140px">
+          </div>
+          <div>
+            <label class="small muted">💧 Água (L)</label>
+            <input id="svWater" type="number" step="0.25" min="0" placeholder="ex.: 2.0" style="width:140px">
+          </div>
+          <button id="svSave" class="wood">Salvar</button>
+        </div>
+        <p class="muted small">Meta diária: <b id="svGoalsText">8h de sono • 2.0L de água</b>. Ao atingir cada meta: ganha XP no personagem e no atributo <b>Saúde</b>.</p>
       </div>
-      <button id="svToday" class="wood">Hoje</button>
-      <div>
-        <label class="small muted">😴 Horas de sono</label>
-        <input id="svSleep" type="number" step="0.5" min="0" max="24" placeholder="ex.: 7.5" style="width:140px">
-      </div>
-      <div>
-        <label class="small muted">💧 Água (L)</label>
-        <input id="svWater" type="number" step="0.25" min="0" placeholder="ex.: 2.0" style="width:140px">
-      </div>
-      <button id="svSave" class="wood">Salvar</button>
-    </div>
-    <p class="muted small">Meta diária: <b id="svGoalsText">8h de sono • 2.0L de água</b>. Ao atingir cada meta: ganha XP no personagem e no atributo <b>Saúde</b>.</p>
-  </div>
 
-  <div class="card">
-    <h3 style="margin:0 0 8px 0;">Histórico semanal</h3>
-    <div id="svHistory"></div>
-  </div>
-</section>
+      <div class="card">
+        <h3 style="margin:0 0 8px 0;">Histórico semanal</h3>
+        <div id="svHistory"></div>
+      </div>
+    </section>
     
     <section id="tab-config" style="display:none;">
       <div class="card">
@@ -217,8 +221,8 @@
       <div class="grid2">
         <div><label class="small muted">Nome</label><input id="charName" placeholder="Nome do personagem"></div>
         <label for="charAvatar">Imagem de perfil:</label>
-<div id="avatarPicker" style="display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;"></div>
-<img id="charAvatarPreview" src="" alt="Avatar" style="width:64px; height:64px; border-radius:8px; border:2px solid var(--accent);">
+        <div id="avatarPicker" style="display:flex; flex-wrap:wrap; gap:8px; margin:8px 0;"></div>
+        <img id="charAvatarPreview" src="" alt="Avatar" style="width:64px; height:64px; border-radius:8px; border:2px solid var(--accent);">
         <div><label class="small muted">XP por nível inicial</label><input id="baseNext" type="number" min="10" value="100"><p class="muted small">A cada nível, a necessidade aumenta em ~10%.</p></div>
       </div>
       <div class="row" style="margin-top:10px; justify-content:flex-end;"><button id="charSave" class="wood">Salvar</button></div>
@@ -263,8 +267,45 @@
     </div>
   </div>
 
+  <!-- NOVO: Modal “Novo atributo (com ícone)” -->
+  <div class="modal" id="attrNewModal">
+    <div class="sheet">
+      <h3 style="margin:0 0 10px 0;">Novo atributo</h3>
+
+      <div class="row" style="align-items:flex-end;">
+        <div style="flex:2;">
+          <label class="small muted">Nome do atributo</label>
+          <input id="attrName2" placeholder="Ex.: Força, Inteligência">
+        </div>
+        <div style="flex:1;">
+          <label class="small muted">Buscar ícone</label>
+          <input id="iconSearch" placeholder="Espada, escudo, magia…">
+        </div>
+        <div>
+          <label class="small muted">Pré-visualização</label>
+          <div class="row" style="align-items:center;">
+            <img id="attrIconPreview" src="" alt="Prévia" style="width:40px; height:40px; border-radius:8px; border:1px solid #2a2217; display:none;">
+            <span class="muted small" id="attrIconHint" style="margin-left:6px;">Selecione um ícone abaixo</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <div class="muted small" style="margin-bottom:6px;">Escolha um ícone (carregado de <code>icons/attributes/</code>)</div>
+        <div id="iconGrid" style="display:grid; grid-template-columns:repeat(8, minmax(0,1fr)); gap:8px; max-height:320px; overflow:auto;">
+          <!-- grade de ícones: o app.js (próxima etapa) vai preencher -->
+        </div>
+      </div>
+
+      <div class="row" style="justify-content:flex-end; margin-top:10px;">
+        <button class="wood" onclick="closeModal('#attrNewModal')">Cancelar</button>
+        <button id="createAttrWithIcon" class="wood">Criar atributo</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Scripts -->
-<script src="app.js"></script>
+  <script src="app.js"></script>
   <script>if('serviceWorker' in navigator){navigator.serviceWorker.register('sw.js?v=2.3.3');}</script>
 </body>
 </html>
