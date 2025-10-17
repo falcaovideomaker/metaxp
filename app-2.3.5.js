@@ -523,6 +523,145 @@ function addAttrAllocLine(){
 }
 function collectAttrAlloc(){ return $$("#mAttrList .attrLine").map(l=>({attrId:$("select",l).value, xp:Math.max(0, parseInt($("input",l).value||"0",10))})) }
 
+// ===================================================
+// ATRIBUTOS COM ÍCONE — picker de icons/attributes/###.png
+// Requer no HTML do modal os ids:
+//   #attrIconModal, #attrIconName, #attrIconSearch,
+//   #attrIconGrid, #attrIconPreview,
+//   #attrCreateWithIcon, #attrCancel,
+//   e um botão que abra o modal: #openAttrWithIcon
+// ===================================================
+
+const ATTR_ICON_MAX = 350; // você disse que tem 350
+const ATTR_ICON_PATH = (n) => `icons/attributes/${String(n).padStart(3,'0')}.png`;
+
+let __attrIconIdsCache = null;       // [1,5,7,...] que realmente existem
+let __attrIconSelectedPath = null;   // caminho selecionado atual
+
+function preloadImage(url) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ ok: true, url });
+    img.onerror = () => resolve({ ok: false, url });
+    img.src = url + '?v=1'; // cache-bust leve
+  });
+}
+
+async function listExistingAttrIcons(max = ATTR_ICON_MAX) {
+  if (__attrIconIdsCache) return __attrIconIdsCache;
+  const tests = [];
+  for (let i = 1; i <= max; i++) tests.push(preloadImage(ATTR_ICON_PATH(i)));
+  const results = await Promise.all(tests);
+  __attrIconIdsCache = results
+    .map((r, idx) => ({ ok: r.ok, idx: idx + 1 }))
+    .filter(x => x.ok)
+    .map(x => x.idx);
+  return __attrIconIdsCache;
+}
+
+function renderAttrIconGrid(ids, query = '') {
+  const grid = document.getElementById('attrIconGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+
+  // filtro por "busca" — casa no número (001) ou no nome (se quiser futuramente)
+  const q = (query || '').trim().toLowerCase();
+  const filtered = q
+    ? ids.filter(i => String(i).padStart(3,'0').includes(q))
+    : ids;
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="muted small">Nenhum ícone encontrado.</div>`;
+    return;
+  }
+
+  filtered.forEach(i => {
+    const path = ATTR_ICON_PATH(i);
+    const img = document.createElement('img');
+    img.src = path;
+    img.alt = `#${String(i).padStart(3,'0')}`;
+    img.title = img.alt;
+    img.style.width = '44px';
+    img.style.height = '44px';
+    img.style.borderRadius = '10px';
+    img.style.border = '1px solid var(--edge)';
+    img.style.background = '#0e0b08';
+    img.style.cursor = 'pointer';
+
+    img.addEventListener('click', () => {
+      __attrIconSelectedPath = path;
+      const prev = document.getElementById('attrIconPreview');
+      if (prev) {
+        prev.src = path;
+        prev.style.display = '';
+      }
+      // realça seleção
+      grid.querySelectorAll('img').forEach(el => el.style.outline = 'none');
+      img.style.outline = '2px solid var(--accent)';
+    });
+
+    grid.appendChild(img);
+  });
+}
+
+async function openAttrIconModal() {
+  // garante a lista e popula
+  const ids = await listExistingAttrIcons();
+  __attrIconSelectedPath = null;
+
+  const nameInput = document.getElementById('attrIconName');
+  if (nameInput) nameInput.value = '';
+
+  const prev = document.getElementById('attrIconPreview');
+  if (prev) { prev.src = ''; prev.style.display = 'none'; }
+
+  renderAttrIconGrid(ids);
+
+  // busca — filtra enquanto digita
+  const search = document.getElementById('attrIconSearch');
+  if (search && !search.__bound) {
+    search.__bound = true;
+    search.addEventListener('input', () => {
+      renderAttrIconGrid(ids, search.value);
+    });
+  }
+
+  openModal('#attrIconModal');
+}
+
+// Botão que abre esse modal
+const btnOpenAttrWithIcon = document.getElementById('openAttrWithIcon');
+if (btnOpenAttrWithIcon && !btnOpenAttrWithIcon.__bound) {
+  btnOpenAttrWithIcon.__bound = true;
+  btnOpenAttrWithIcon.addEventListener('click', openAttrIconModal);
+}
+
+// Criar atributo com o ícone escolhido
+const btnCreateAttrWithIcon = document.getElementById('attrCreateWithIcon');
+if (btnCreateAttrWithIcon && !btnCreateAttrWithIcon.__bound) {
+  btnCreateAttrWithIcon.__bound = true;
+  btnCreateAttrWithIcon.addEventListener('click', () => {
+    const name = (document.getElementById('attrIconName')?.value || '').trim();
+    if (!name) return alert('Dê um nome ao atributo.');
+    if (!__attrIconSelectedPath) return alert('Selecione um ícone.');
+
+    const id = 'a' + Math.random().toString(36).slice(2, 8);
+    state.attributes.push({ id, name, level:1, xp:0, next:100, icon: __attrIconSelectedPath });
+    store.save(state);
+
+    closeModal('#attrIconModal');
+    renderAttributes();
+    renderMissionModalAttrList(); // se você usa o seletor de atributos nas missões
+  });
+}
+
+// Cancelar
+const btnCancelAttr = document.getElementById('attrCancel');
+if (btnCancelAttr && !btnCancelAttr.__bound) {
+  btnCancelAttr.__bound = true;
+  btnCancelAttr.addEventListener('click', () => closeModal('#attrIconModal'));
+}
+
 /////////////////////////////
 // Ouro / Conquistas
 /////////////////////////////
