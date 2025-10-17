@@ -49,25 +49,32 @@
   </style>
 </head>
 <body>
-  <header>
-    <div class="row" style="align-items:center;">
-      <div class="crest" style="flex:1;">
-        <div class="seal">XP</div>
-        <div style="flex:1;">
-          <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
-            <div style="font-weight:900; letter-spacing:.5px;" id="charNameView">Aventureiro</div>
-            <span class="chip">Nv. <span id="charLevel">1</span></span>
-          </div>
-          <div class="xpbar small" style="margin-top:6px;">
-            <div class="bar"><div class="fill" id="charXPFill"></div></div>
-            <div class="chip"><span id="charXP">0</span>/<span id="charNext">100</span></div>
-          </div>
-        </div>
+ <header>
+  <div class="row" style="align-items:center;">
+    <div class="crest" style="flex:1; display:flex; align-items:center; gap:10px;">
+      <!-- Avatar do personagem -->
+      <img id="charAvatarHeader" src="" alt="Avatar"
+           style="width:48px; height:48px; border-radius:8px; border:2px solid var(--accent); display:none;">
+
+      <!-- Selo XP -->
+      <div class="seal">XP</div>
+
+      <!-- Nome e nível -->
+      <div>
+        <div id="charNameView" style="font-weight:900; letter-spacing:.5px;">Aventureiro</div>
+        <div class="small muted">Nv. <span id="charLevel">1</span></div>
       </div>
-      <span class="chip wood">🪙 Ouro: <b id="goldBalance">0</b></span>
-      <button id="editCharBtn" class="chip wood">⚙️ Editar</button>
     </div>
-  </header>
+  </div>
+
+  <div class="xpbars">
+    <div class="xpbar small" style="margin-top:6px;">
+      <div class="bar"><div class="fill" id="charXPFill"></div></div>
+      <div class="chip"><span id="charXP">0</span>/<span id="charNext">100</span></div>
+    </div>
+  </div>
+</header>
+
 
   <div class="tabs">
     <div class="tab active" data-tab="missoes">🗡️ Missões</div>
