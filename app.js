@@ -1,4 +1,4 @@
-/* Meta XP — app.js 2.3.4-themes
+/* Meta XP — app.js 2.3.4
    - Missões (única/semanal) com dificuldade (x1/x1.5/x2)
    - Streak e bônus de streak
    - Atributos com nível/XP progressivo (+10% por nível)
@@ -7,6 +7,8 @@
    - Calendário de conclusões
    - Exportar/Importar JSON
    - Temas: medieval (padrão), pink, minimal (sem ícones)
+   - Sobrevivência: sono & água com metas e XP
+   - Avatar do personagem (galeria no modal)
 */
 
 /////////////////////////////
@@ -28,39 +30,55 @@ const store = {
   key: "metaxp6",
   load(){
     const raw = localStorage.getItem(this.key);
-if(!raw) return {
-  character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:""},
-  attributes:[],
-  missions:[],
-  completions:{},
-  xpLog:[],
-  gold:0,
-  achievementsAwarded:{},
-  rewards:[],
-  rewardsHistory:[],
-  theme: localStorage.getItem('metaxp_theme') || 'medieval'
-};
-try { return JSON.parse(raw) } catch(e){ return {
-  character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:""},
-  attributes:[], missions:[], completions:{}, xpLog:[],
-  gold:0, achievementsAwarded:{}, rewards:[], rewardsHistory:[],
-  theme:'medieval'
-}}
+    if(!raw) return {
+      character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:null},
+      attributes:[],
+      missions:[],
+      completions:{},
+      xpLog:[],
+      gold:0,
+      achievementsAwarded:{},
+      rewards:[],
+      rewardsHistory:[],
+      survival:{},
+      theme: localStorage.getItem('metaxp_theme') || 'medieval'
+    };
+    try {
+      const obj = JSON.parse(raw);
+      // defaults defensivos
+      obj.character = obj.character || {name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:null};
+      if (obj.character.avatar===undefined) obj.character.avatar = null;
+      obj.survival = obj.survival || {};
+      obj.theme = obj.theme || localStorage.getItem('metaxp_theme') || 'medieval';
+      obj.attributes = obj.attributes || [];
+      obj.missions = obj.missions || [];
+      obj.completions = obj.completions || {};
+      obj.xpLog = obj.xpLog || [];
+      obj.gold = obj.gold || 0;
+      obj.achievementsAwarded = obj.achievementsAwarded || {};
+      obj.rewards = obj.rewards || [];
+      obj.rewardsHistory = obj.rewardsHistory || [];
+      return obj;
+    } catch(e){
+      return {
+        character:{name:"Aventureiro", level:1, xp:0, next:100, baseNext:100, avatar:null},
+        attributes:[], missions:[], completions:{}, xpLog:[],
+        gold:0, achievementsAwarded:{}, rewards:[], rewardsHistory:[],
+        survival:{}, theme:'medieval'
+      };
+    }
   },
   save(d){ localStorage.setItem(this.key, JSON.stringify(d)) }
 };
 let state = store.load();
 
-// --- Sobrevivência: init ---
-if (!state.survival) state.survival = {};        // { 'YYYY-MM-DD': { sleep:number, water:number, awarded?:true } }
-if (!state.meta) state.meta = {};                // reserva (se precisar futuramente)
-
-// Garante atributo "Saúde"
+/////////////////////////////
+// Atributo Saúde garantido
+/////////////////////////////
 function ensureHealthAttribute(){
-  const exists = state.attributes?.some(a => a.name.toLowerCase() === 'saúde' || a.id === 'health');
+  const exists = state.attributes?.some(a => (a.name||"").toLowerCase() === 'saúde' || a.id === 'health');
   if (!exists){
     const id = 'health';
-    if (!state.attributes) state.attributes = [];
     state.attributes.push({ id, name:'Saúde', level:1, xp:0, next:100 });
     store.save(state);
   }
@@ -129,11 +147,17 @@ function renderHeader(){
   const pct = Math.min(100, Math.round(100*state.character.xp/state.character.next));
   $("#charXPFill") && ($("#charXPFill").style.width = pct+"%");
   $("#goldBalance") && ($("#goldBalance").textContent = state.gold);
-     // Atualiza o avatar no cabeçalho, se houver
-  const avatarEl = $("#charAvatarHeader");
-  if (avatarEl && state.character.avatar) {
-    avatarEl.src = state.character.avatar;
-    avatarEl.style.display = "block";
+
+  // avatar no header (se existir)
+  const avatarImg = $("#charAvatar") || $("#charAvatarImg");
+  if (avatarImg){
+    if (state.character.avatar){
+      avatarImg.src = state.character.avatar;
+      avatarImg.style.display = "";
+    } else {
+      avatarImg.style.display = "none";
+    }
+  }
 }
 
 /////////////////////////////
@@ -149,7 +173,7 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
     conquistas: "#tab-conquistas",
     calendario: "#tab-calendario",
     rewards: "#tab-rewards",
-   survival: "#tab-survival",
+    survival: "#tab-survival",
     config: "#tab-config"
   };
   Object.entries(map).forEach(([k,sel])=>{
@@ -158,33 +182,36 @@ $$(".tab").forEach(t=>t.addEventListener("click",()=>{
   });
 }));
 
-// --- Editar personagem (com avatar) ---
+// Modal personagem: abrir e montar picker
 $("#editCharBtn") && ($("#editCharBtn").onclick = () => {
-  // Preenche os campos atuais
   const nameEl = $("#charName");
   const baseNextEl = $("#baseNext");
   if (nameEl) nameEl.value = state.character.name || "Aventureiro";
   if (baseNextEl) baseNextEl.value = state.character.baseNext || 100;
 
-  // Monta o picker de avatar (se existir o contêiner no HTML do modal)
   const box = $("#avatarPicker");
   const prev = $("#charAvatarPreview");
-
-  // Limpa e reconstrói a grade
-  if (box) {
+  if (box){
     box.innerHTML = "";
-
-    // Ajuste: coloque os PNGs dentro de /avatars/ (ou subpasta que você usou)
-    const count = 20; // qtos ícones você tem
+    // Coloque seus PNGs em /avatars/avatar-1.png ... avatar-20.png
+    const count = 20;
     const paths = Array.from({length: count}, (_,i)=> `avatars/avatar-${i+1}.png`);
 
-    // Mostra o atual no preview (se houver)
-    if (prev) {
+    if (prev){
       prev.style.display = state.character.avatar ? "" : "none";
       if (state.character.avatar) prev.src = state.character.avatar;
+      prev.style.width = "64px";
+      prev.style.height = "64px";
+      prev.style.borderRadius = "8px";
+      prev.style.border = "2px solid var(--accent)";
     }
 
-    paths.forEach(path => {
+    box.style.display = "flex";
+    box.style.flexWrap = "wrap";
+    box.style.gap = "8px";
+    box.style.margin = "8px 0";
+
+    paths.forEach(path=>{
       const img = document.createElement("img");
       img.src = path;
       img.alt = "avatar";
@@ -193,27 +220,16 @@ $("#editCharBtn") && ($("#editCharBtn").onclick = () => {
       img.style.borderRadius = "8px";
       img.style.cursor = "pointer";
       img.style.border = "2px solid transparent";
+      if (state.character.avatar === path) img.style.border = "2px solid var(--accent)";
 
-      // realça se for o avatar atual
-      if (state.character.avatar === path) {
-        img.style.border = "2px solid var(--accent)";
-      }
-
-      img.addEventListener("click", () => {
+      img.addEventListener("click", ()=>{
         state.character.avatar = path;
-        if (prev) { prev.src = path; prev.style.display = ""; }
+        if (prev){ prev.src = path; prev.style.display = ""; }
         store.save(state);
-
-        // re-render só do header para refletir o avatar
         renderHeader();
-
-        // Ajusta bordas na grade para indicar o selecionado
-        Array.from(box.querySelectorAll("img")).forEach(el=>{
-          el.style.border = "2px solid transparent";
-        });
+        Array.from(box.querySelectorAll("img")).forEach(el=>el.style.border = "2px solid transparent");
         img.style.border = "2px solid var(--accent)";
       });
-
       box.appendChild(img);
     });
   }
@@ -221,21 +237,18 @@ $("#editCharBtn") && ($("#editCharBtn").onclick = () => {
   openModal("#charModal");
 });
 
-// Salvar personagem (nome e XP/nível base)
-$("#charSave") && ($("#charSave").onclick = () => {
-  const name = ($("#charName")?.value || "").trim() || "Aventureiro";
-  const baseNext = Math.max(10, parseInt($("#baseNext")?.value || "100", 10));
-
+// Salvar personagem
+$("#charSave") && ($("#charSave").onclick = ()=>{
+  const name = ($("#charName")?.value||"").trim() || "Aventureiro";
+  const baseNext = Math.max(10, parseInt($("#baseNext")?.value||"100",10));
   state.character.name = name;
   state.character.baseNext = baseNext;
-
-  // Se ainda está no nível 1, sincroniza a exigência de XP
-  if (state.character.level === 1) state.character.next = baseNext;
-
+  if(state.character.level===1) state.character.next = baseNext;
   store.save(state);
   renderHeader();
   closeModal("#charModal");
 });
+
 /////////////////////////////
 // Atributos
 /////////////////////////////
@@ -390,7 +403,7 @@ function undoOccurrence(occId){
   renderMissions(); renderCalendar(); renderAchievements(); renderStats();
 }
 
-// Modal Missão
+// Modal Missão utils
 function openModal(s){ $(s)?.classList.add("open") }
 function closeModal(s){ $(s)?.classList.remove("open") }
 
@@ -707,32 +720,30 @@ function ensureThemeStyleTag(){
   return tag;
 }
 function applyTheme(theme){
-  try { localStorage.setItem('metaxp_theme', theme); } catch(e){}
+  try { localStorage.setItem('metaxp_theme', theme) } catch(e){}
   document.documentElement.setAttribute('data-theme', theme);
-  ensureThemeStyleTag().textContent = (THEME_STYLES[theme] || THEME_STYLES.medieval);
+  ensureThemeStyleTag().textContent =
+    (THEME_STYLES[theme] || THEME_STYLES.medieval);
 
-  // Pegue as abas UMA vez, visível a ambos os ramos abaixo
-  const tEls = Array.from(document.querySelectorAll('.tabs .tab'));
-
+  const tabs = Array.from(document.querySelectorAll('.tabs .tab'));
   if (theme === 'minimal' || theme === 'pink') {
-    // Remove os emojis do começo do rótulo
-    tEls.forEach(t=>{
+    tabs.forEach(t=>{
       const txt = (t.textContent || '');
       t.textContent = txt.replace(/^[^\p{L}\p{N}]+/u, '').trim();
     });
-  } else { // medieval: restaura os rótulos originais (por data-tab)
-    const originalsByKey = {
-      missoes:    '🗡️ Missões',
-      atributos:  '🛡️ Atributos',
+  } else if (theme === 'medieval') {
+    const originals = {
+      missoes: '🗡️ Missões',
+      atributos: '🛡️ Atributos',
       conquistas: '🏆 Conquistas',
       calendario: '📜 Calendário',
-      rewards:    '💰 Recompensas',
-      survival:   '🌿 Sobrevivência',
-      config:     '⚙️ Configurações'
+      rewards: '💰 Recompensas',
+      survival: '🌿 Sobrevivência',
+      config: '⚙️ Configurações'
     };
-    tEls.forEach(t=>{
-      const k = t.dataset.tab;
-      if (originalsByKey[k]) t.textContent = originalsByKey[k];
+    tabs.forEach((t)=>{
+      const key = t.dataset.tab;
+      if (originals[key]) t.textContent = originals[key];
     });
   }
 }
@@ -762,33 +773,33 @@ function ensureThemeButtons(){
   applyTheme(localStorage.getItem('metaxp_theme') || state.theme || 'medieval');
 }
 
-// ====== Sobrevivência (Sono & Água) ======
-const SV_SLEEP_GOAL = 8.0;   // horas
-const SV_WATER_GOAL = 2.0;   // litros
-const SV_CHAR_XP_ON_GOAL = 5;     // XP no personagem por meta batida
-const SV_HEALTH_XP_ON_GOAL = 5;   // XP no atributo "Saúde" por meta batida
+/////////////////////////////
+// Sobrevivência (Sono & Água)
+/////////////////////////////
+const SV_SLEEP_GOAL = 8.0;          // horas
+const SV_WATER_GOAL = 2.0;          // litros
+const SV_CHAR_XP_ON_GOAL = 5;       // XP personagem por meta batida
+const SV_HEALTH_XP_ON_GOAL = 5;     // XP atributo Saúde por meta batida
 
-function svGet(day){ return state.survival[day] || { sleep:0, water:0 } }
-function svSet(day, data){ state.survival[day] = { sleep: data.sleep||0, water: data.water||0, awarded: data.awarded||false } }
+function svGet(day){ return state.survival[day] || { sleep:0, water:0, awarded:false } }
+function svSet(day, data){ state.survival[day] = { sleep: data.sleep||0, water: data.water||0, awarded: !!data.awarded } }
 
 function renderSurvival(){
-  // data "Hoje" por padrão
-  const today = todayKey();
+  const wrap = $("#tab-survival"); if(!wrap) return;
   const dateInput = $("#svDate");
-  if (!dateInput.value) dateInput.value = today;
-  $("#svGoalsText").textContent = `${SV_SLEEP_GOAL}h de sono • ${SV_WATER_GOAL.toFixed(1)}L de água`;
+  if (!dateInput.value) dateInput.value = todayKey();
+  $("#svGoalsText") && ($("#svGoalsText").textContent = `${SV_SLEEP_GOAL}h de sono • ${SV_WATER_GOAL.toFixed(1)}L de água`);
 
-  // Preenche campos com o que houver salvo
   const rec = svGet(dateInput.value);
-  $("#svSleep").value = rec.sleep || "";
-  $("#svWater").value = rec.water || "";
-
+  $("#svSleep") && ($("#svSleep").value = rec.sleep || "");
+  $("#svWater") && ($("#svWater").value = rec.water || "");
   renderSurvivalHistory();
 }
 
 $("#svToday")?.addEventListener("click", ()=>{
-  $("#svDate").valueAsDate = new Date();
-  const rec = svGet(todayKey());
+  const k = todayKey();
+  $("#svDate").value = k;
+  const rec = svGet(k);
   $("#svSleep").value = rec.sleep || "";
   $("#svWater").value = rec.water || "";
 });
@@ -810,42 +821,29 @@ $("#svSave")?.addEventListener("click", ()=>{
   svSet(day, { sleep, water, awarded: prev.awarded });
   store.save(state);
 
-  // Regras de meta e XP (uma vez por dia)
   const hitSleep = sleep >= SV_SLEEP_GOAL;
   const hitWater = water >= SV_WATER_GOAL;
 
   if (!alreadyAwarded && (hitSleep || hitWater)){
-    // concede XP no personagem + atributo "Saúde" por cada meta batida
     let totalChar = 0, totalHealth = 0;
-    const health = state.attributes.find(a => a.name.toLowerCase()==='saúde' || a.id==='health');
+    const health = state.attributes.find(a => a.id==='health' || (a.name||'').toLowerCase()==='saúde');
     if (hitSleep){ totalChar += SV_CHAR_XP_ON_GOAL; totalHealth += SV_HEALTH_XP_ON_GOAL; }
     if (hitWater){ totalChar += SV_CHAR_XP_ON_GOAL; totalHealth += SV_HEALTH_XP_ON_GOAL; }
-
     if (totalChar>0) grantXPCharacter(totalChar);
     if (health && totalHealth>0) grantXPAttribute(health.id, totalHealth);
-
-    // marca como premiado no dia pra não duplicar
-    const d = svGet(day);
-    d.awarded = true;
-    svSet(day, d);
-    store.save(state);
-
+    const d = svGet(day); d.awarded = true; svSet(day,d); store.save(state);
     toast(`🌿 Metas do dia atingidas! +${totalChar} XP personagem, +${totalHealth} XP em Saúde`);
   } else {
     toast(`🌿 Dados de ${day} salvos!`);
   }
 
-  renderHeader();
-  renderAttributes();
-  renderSurvivalHistory();
+  renderHeader(); renderAttributes(); renderSurvivalHistory();
 });
 
-// histórico (últimos 7 dias) com mini-barras
 function renderSurvivalHistory(){
-  const box = $("#svHistory");
+  const box = $("#svHistory"); if(!box) return;
   box.innerHTML = "";
 
-  // pega últimos 7 dias em ordem decrescente (hoje -> -6)
   const days = [];
   const today = new Date();
   for (let i=0;i<7;i++){
@@ -864,7 +862,6 @@ function renderSurvivalHistory(){
   table.style.gap = "8px";
   table.style.alignItems = "center";
 
-  // header
   table.innerHTML = `
     <div class="muted small">Data</div>
     <div class="muted small">😴 Sono</div>
@@ -873,7 +870,6 @@ function renderSurvivalHistory(){
 
   days.forEach(k=>{
     const r = svGet(k);
-    // % para as barras com base nas metas
     const pSleep = Math.min(100, Math.round((r.sleep||0)/SV_SLEEP_GOAL*100));
     const pWater = Math.min(100, Math.round((r.water||0)/SV_WATER_GOAL*100));
     const okSleep = (r.sleep||0) >= SV_SLEEP_GOAL;
@@ -889,7 +885,7 @@ function renderSurvivalHistory(){
     `;
 
     const row = document.createElement("div");
-    row.style.display = "contents"; // pra usar grid
+    row.style.display = "contents";
     row.innerHTML = `
       <div><span class="chip">${k}</span></div>
       <div>${bar(pSleep, okSleep, (r.sleep??0)+'h')}</div>
