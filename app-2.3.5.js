@@ -209,9 +209,10 @@ if(btnEdit){
     var box=$("#avatarPicker"), prev=$("#charAvatarPreview");
     if(box){
       box.innerHTML="";
-      var count=20, paths=[];
-      for(var i=1;i<=count;i++) paths.push("avatars/"+String(i).padStart(3,"0")+".png");
-      if(prev){
+    var count = 20, paths = [];
+for (var i = 1; i <= count; i++) {
+  paths.push("avatars/avatar-" + i + ".png");
+}
         prev.style.display = state.character.avatar ? "" : "none";
         if(state.character.avatar) prev.src = state.character.avatar;
         prev.style.width="64px"; prev.style.height="64px";
