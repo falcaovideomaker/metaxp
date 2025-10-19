@@ -958,6 +958,132 @@ function toast(msg){
   document.body.appendChild(el);
   setTimeout(function(){ el.remove(); },1800);
 }
+/* ====== ÍCONES PARA ATRIBUTOS (grid + criação) ====== */
+(function () {
+  // Quantos PNGs existem na pasta icons/attributes/
+  const ICON_BASE  = 'icons/attributes/';
+  const ICON_COUNT = 350; // ajuste se tiver menos/mais
+  let __attrIconSelected = null;
+
+  // Renderiza a grade uma única vez (idempotente)
+  function renderAttrIconGrid() {
+    const grid   = document.getElementById('iconGrid');
+    const prev   = document.getElementById('attrIconPreview');
+    const hint   = document.getElementById('attrIconHint');
+    if (!grid) return;
+
+    // se já renderizou antes, só reaplica seleção e sai
+    if (grid.__rendered) {
+      grid.querySelectorAll('img').forEach(img => {
+        img.style.outline = (img.dataset.path === __attrIconSelected) ? '2px solid var(--accent)' : 'none';
+      });
+      if (__attrIconSelected && prev) {
+        prev.src = __attrIconSelected;
+        prev.style.display = '';
+        if (hint) hint.textContent = __attrIconSelected.split('/').pop();
+      }
+      return;
+    }
+
+    grid.innerHTML = '';
+    for (let i = 1; i <= ICON_COUNT; i++) {
+      const file = String(i).padStart(3, '0') + '.png';
+      const path = ICON_BASE + file;
+
+      const img  = new Image();
+      img.src    = path;
+      img.alt    = file;
+      img.dataset.path = path;
+      img.style.width  = '40px';
+      img.style.height = '40px';
+      img.style.borderRadius = '8px';
+      img.style.cursor = 'pointer';
+      img.style.background = '#0e0b08';
+      img.style.border = '1px solid #2a2217';
+      img.style.outline = 'none';
+
+      img.onerror = () => { img.remove(); };
+
+      img.onclick = () => {
+        __attrIconSelected = path;
+        grid.querySelectorAll('img').forEach(el => el.style.outline = 'none');
+        img.style.outline = '2px solid var(--accent)';
+        if (prev) {
+          prev.src = path;
+          prev.style.display = '';
+        }
+        if (hint) hint.textContent = file;
+      };
+
+      grid.appendChild(img);
+    }
+
+    grid.__rendered = true;
+  }
+
+  // Envolve seu openModal para disparar a grade quando for o #attrNewModal
+  const _openModal = window.openModal || (sel => document.querySelector(sel)?.classList.add('open'));
+  window.openModal = function (sel) {
+    _openModal(sel);
+    if (sel === '#attrNewModal') {
+      // Limpa seleção/preview a cada abertura
+      __attrIconSelected = null;
+      const prev = document.getElementById('attrIconPreview');
+      const hint = document.getElementById('attrIconHint');
+      if (prev) { prev.src = ''; prev.style.display = 'none'; }
+      if (hint) hint.textContent = 'Selecione um ícone abaixo';
+      renderAttrIconGrid();
+    }
+  };
+
+  // Botão "Criar atributo" do modal novo
+  document.getElementById('createAttrWithIcon')?.addEventListener('click', () => {
+    const name = (document.getElementById('attrName2')?.value || '').trim();
+    if (!name) return alert('Dê um nome ao atributo.');
+    if (!__attrIconSelected) return alert('Selecione um ícone.');
+
+    const id = 'a' + Math.random().toString(36).slice(2, 8);
+    if (!Array.isArray(state.attributes)) state.attributes = [];
+    state.attributes.push({ id, name, level: 1, xp: 0, next: 100, icon: __attrIconSelected });
+
+    try { store.save(state); } catch (e) {}
+    // fecha modal, limpa campos e re-renderiza
+    document.getElementById('attrName2').value = '';
+    __attrIconSelected = null;
+    (document.querySelector('#attrNewModal')?.classList.remove('open'));
+    renderAttributes();
+  });
+
+  // Mostra o ícone na lista de atributos (sem quebrar o que já existe)
+  const __oldRenderAttributes = window.renderAttributes;
+  window.renderAttributes = function () {
+    __oldRenderAttributes && __oldRenderAttributes();
+
+    const wrap = document.getElementById('attrList');
+    if (!wrap) return;
+
+    // injeta o ícone no título de cada card, se houver
+    wrap.querySelectorAll('.card').forEach((card, idx) => {
+      const a = [...state.attributes]
+        .sort((a, b) => (b.level - a.level) || (b.xp / (b.next || 1) - a.xp / (a.next || 1)))[idx];
+      if (!a || !a.icon) return;
+
+      const title = card.querySelector('div[style*="font-weight:900"]');
+      if (title && !title.querySelector('img.attr-ic')) {
+        const ic = document.createElement('img');
+        ic.className = 'attr-ic';
+        ic.src = a.icon;
+        ic.alt = '';
+        ic.style.width = '18px';
+        ic.style.height = '18px';
+        ic.style.borderRadius = '4px';
+        ic.style.marginRight = '6px';
+        ic.style.verticalAlign = '-3px';
+        title.prepend(ic);
+      }
+    });
+  };
+})();
 
 /////////////////////////////
 // Filtros Missões / Modals
