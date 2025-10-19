@@ -1138,6 +1138,18 @@ function toast(msg){
     });
   };
 })();
+/* ====== PATCH: suprimir alerta "Dê um nome ao atributo." quando o modal de ícones estiver aberto ====== */
+(function () {
+  const oldAlert = window.alert;
+  window.alert = function (msg) {
+    // Se o modal de novo atributo com ícone estiver aberto, ignoramos só esse alerta específico.
+    const modalOpen = document.getElementById('attrNewModal')?.classList.contains('open');
+    if (modalOpen && typeof msg === 'string' && /Dê um nome ao atributo\.?/.test(msg)) {
+      return; // não mostra o alerta
+    }
+    return oldAlert(msg);
+  };
+})();
 
 /////////////////////////////
 // Filtros Missões / Modals
