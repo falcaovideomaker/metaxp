@@ -958,24 +958,35 @@ function toast(msg){
   document.body.appendChild(el);
   setTimeout(function(){ el.remove(); },1800);
 }
-/* ====== ÍCONES PARA ATRIBUTOS (grid + criação) ====== */
+/* ====== PATCH: grade de ícones + criação robusta ====== */
 (function () {
-  // Quantos PNGs existem na pasta icons/attributes/
   const ICON_BASE  = 'icons/attributes/';
-  const ICON_COUNT = 350; // ajuste se tiver menos/mais
+  const ICON_COUNT = 350;
   let __attrIconSelected = null;
 
-  // Renderiza a grade uma única vez (idempotente)
   function renderAttrIconGrid() {
-    const grid   = document.getElementById('iconGrid');
-    const prev   = document.getElementById('attrIconPreview');
-    const hint   = document.getElementById('attrIconHint');
+    const grid = document.getElementById('iconGrid');
+    const prev = document.getElementById('attrIconPreview');
+    const hint = document.getElementById('attrIconHint');
     if (!grid) return;
 
-    // se já renderizou antes, só reaplica seleção e sai
+    // fundo claro pro container da grade
+    grid.style.background = 'transparent';
+    grid.style.padding = '0';
+
+    // Fundo claro pra prévia
+    if (prev) {
+      prev.style.display = 'none';
+      prev.style.background = '#ececec';
+      prev.style.borderRadius = '8px';
+      prev.style.border = '2px solid var(--accent)';
+    }
+
+    // se já renderizou, só reaplica seleção
     if (grid.__rendered) {
       grid.querySelectorAll('img').forEach(img => {
-        img.style.outline = (img.dataset.path === __attrIconSelected) ? '2px solid var(--accent)' : 'none';
+        img.style.outline = (img.dataset.path === __attrIconSelected)
+          ? '2px solid var(--accent)' : 'none';
       });
       if (__attrIconSelected && prev) {
         prev.src = __attrIconSelected;
@@ -990,16 +1001,19 @@ function toast(msg){
       const file = String(i).padStart(3, '0') + '.png';
       const path = ICON_BASE + file;
 
-      const img  = new Image();
-      img.src    = path;
-      img.alt    = file;
+      const img = new Image();
+      img.src = path;
+      img.alt = file;
       img.dataset.path = path;
-      img.style.width  = '40px';
+
+      // 👇 deixa o ícone legível em tema escuro
+      img.style.width = '40px';
       img.style.height = '40px';
       img.style.borderRadius = '8px';
       img.style.cursor = 'pointer';
-      img.style.background = '#0e0b08';
-      img.style.border = '1px solid #2a2217';
+      img.style.background = '#ececec';        // fundo claro
+      img.style.border = '1px solid #d6d6d6';  // borda suave
+      img.style.boxShadow = 'inset 0 1px 0 #fff6';
       img.style.outline = 'none';
 
       img.onerror = () => { img.remove(); };
@@ -1011,78 +1025,101 @@ function toast(msg){
         if (prev) {
           prev.src = path;
           prev.style.display = '';
+          prev.style.background = '#ececec';
         }
         if (hint) hint.textContent = file;
       };
 
       grid.appendChild(img);
     }
-
     grid.__rendered = true;
   }
 
-  // Envolve seu openModal para disparar a grade quando for o #attrNewModal
+  // Envolve openModal p/ carregar grade ao abrir
   const _openModal = window.openModal || (sel => document.querySelector(sel)?.classList.add('open'));
-  window.openModal = function (sel) {
-    _openModal(sel);
-    if (sel === '#attrNewModal') {
-      // Limpa seleção/preview a cada abertura
-      __attrIconSelected = null;
-      const prev = document.getElementById('attrIconPreview');
-      const hint = document.getElementById('attrIconHint');
-      if (prev) { prev.src = ''; prev.style.display = 'none'; }
-      if (hint) hint.textContent = 'Selecione um ícone abaixo';
-      renderAttrIconGrid();
-    }
-  };
-
-  // Botão "Criar atributo" do modal novo
-  document.getElementById('createAttrWithIcon')?.addEventListener('click', () => {
-    const name = (document.getElementById('attrName2')?.value || '').trim();
-    if (!name) return alert('Dê um nome ao atributo.');
-    if (!__attrIconSelected) return alert('Selecione um ícone.');
-
-    const id = 'a' + Math.random().toString(36).slice(2, 8);
-    if (!Array.isArray(state.attributes)) state.attributes = [];
-    state.attributes.push({ id, name, level: 1, xp: 0, next: 100, icon: __attrIconSelected });
-
-    try { store.save(state); } catch (e) {}
-    // fecha modal, limpa campos e re-renderiza
-    document.getElementById('attrName2').value = '';
-    __attrIconSelected = null;
-    (document.querySelector('#attrNewModal')?.classList.remove('open'));
-    renderAttributes();
-  });
-
-  // Mostra o ícone na lista de atributos (sem quebrar o que já existe)
-  const __oldRenderAttributes = window.renderAttributes;
-  window.renderAttributes = function () {
-    __oldRenderAttributes && __oldRenderAttributes();
-
-    const wrap = document.getElementById('attrList');
-    if (!wrap) return;
-
-    // injeta o ícone no título de cada card, se houver
-    wrap.querySelectorAll('.card').forEach((card, idx) => {
-      const a = [...state.attributes]
-        .sort((a, b) => (b.level - a.level) || (b.xp / (b.next || 1) - a.xp / (a.next || 1)))[idx];
-      if (!a || !a.icon) return;
-
-      const title = card.querySelector('div[style*="font-weight:900"]');
-      if (title && !title.querySelector('img.attr-ic')) {
-        const ic = document.createElement('img');
-        ic.className = 'attr-ic';
-        ic.src = a.icon;
-        ic.alt = '';
-        ic.style.width = '18px';
-        ic.style.height = '18px';
-        ic.style.borderRadius = '4px';
-        ic.style.marginRight = '6px';
-        ic.style.verticalAlign = '-3px';
-        title.prepend(ic);
+  if (!_openModal.__patched) {
+    window.openModal = function (sel) {
+      _openModal(sel);
+      if (sel === '#attrNewModal') {
+        __attrIconSelected = null;
+        const prev = document.getElementById('attrIconPreview');
+        const hint = document.getElementById('attrIconHint');
+        const name = document.getElementById('attrName2');
+        if (prev) { prev.src = ''; prev.style.display = 'none'; prev.style.background = '#ececec'; }
+        if (hint) hint.textContent = 'Selecione um ícone abaixo';
+        if (name) name.value = (name.value || '').trim(); // normaliza
+        renderAttrIconGrid();
       }
-    });
-  };
+    };
+    window.openModal.__patched = true;
+  }
+
+  // Botão Criar atributo (evita múltiplos binds)
+  const btn = document.getElementById('createAttrWithIcon');
+  if (btn && !btn.__bound) {
+    btn.__bound = true;
+    // garante que NÃO é submit de form
+    btn.setAttribute('type', 'button');
+
+    btn.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const nameEl = document.getElementById('attrName2');
+      const name = (nameEl && typeof nameEl.value === 'string') ? nameEl.value.trim() : '';
+
+      if (!name) { alert('Dê um nome ao atributo.'); return; }
+      if (!__attrIconSelected) { alert('Selecione um ícone.'); return; }
+
+      const id = 'a' + Math.random().toString(36).slice(2, 8);
+      if (!Array.isArray(state.attributes)) state.attributes = [];
+      state.attributes.push({ id, name, level: 1, xp: 0, next: 100, icon: __attrIconSelected });
+
+      try { store.save(state); } catch(e) {}
+
+      // fecha modal e limpa
+      if (nameEl) nameEl.value = '';
+      __attrIconSelected = null;
+      document.getElementById('attrNewModal')?.classList.remove('open');
+      // re-render
+      if (typeof renderAttributes === 'function') renderAttributes();
+    }, { once: false });
+  }
+
+  // Injeta ícone no card de atributo (mantém seu render)
+  if (!window.renderAttributes.__withIcons) {
+    const __old = window.renderAttributes;
+    window.renderAttributes = function () {
+      __old && __old();
+
+      const wrap = document.getElementById('attrList');
+      if (!wrap) return;
+
+      const sorted = [...(state.attributes || [])]
+        .sort((a,b)=> (b.level - a.level) || (b.xp/(b.next||1) - a.xp/(a.next||1)));
+
+      wrap.querySelectorAll('.card').forEach((card, idx) => {
+        const a = sorted[idx];
+        if (!a || !a.icon) return;
+        const title = card.querySelector('div[style*="font-weight:900"]');
+        if (title && !title.querySelector('img.attr-ic')) {
+          const ic = document.createElement('img');
+          ic.className = 'attr-ic';
+          ic.src = a.icon;
+          ic.alt = '';
+          ic.style.width = '18px';
+          ic.style.height = '18px';
+          ic.style.borderRadius = '4px';
+          ic.style.marginRight = '6px';
+          ic.style.verticalAlign = '-3px';
+          ic.style.background = '#ececec';
+          ic.style.border = '1px solid #d6d6d6';
+          title.prepend(ic);
+        }
+      });
+    };
+    window.renderAttributes.__withIcons = true;
+  }
 })();
 
 /////////////////////////////
