@@ -1121,6 +1121,23 @@ function toast(msg){
     window.renderAttributes.__withIcons = true;
   }
 })();
+/* ====== PATCH FINAL: remover ícone duplicado à esquerda ====== */
+(function () {
+  const __old = window.renderAttributes;
+  window.renderAttributes = function () {
+    __old && __old();
+
+    const wrap = document.getElementById('attrList');
+    if (!wrap) return;
+
+    // remove imagens duplicadas escuras dentro do card (as que vêm da versão antiga)
+    wrap.querySelectorAll('.card img').forEach(img => {
+      if (img && img.alt === '' && !img.classList.contains('attr-ic')) {
+        img.remove();
+      }
+    });
+  };
+})();
 
 /////////////////////////////
 // Filtros Missões / Modals
